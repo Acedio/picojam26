@@ -15,7 +15,8 @@ end
 
 print(pwd())
 cp("/picojam26/src", "src")
-include("src/game.lua")
+cd("src")
+include("game.lua")
 :: src/test.lua
 function _init()
   print("hey mike 2!")

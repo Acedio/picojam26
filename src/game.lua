@@ -1,3 +1,6 @@
+local Horse = include("horse.lua")
+local v2 = include("v2.lua")
+
 local left_text = "the quick brown fox jumped over the lazy dog"
 local right_text = "the quick brown fox jumped over the lazy dog"
 -- local left_text = "rearrests secret fever basseted crazes"
@@ -9,7 +12,10 @@ local right_color = 2
 local untyped_color = 3
 
 function _init()
+  horse = Horse:new{pos = v2.v2(0, 30)}
   fetch("/system/fonts/lil_mono.font"):poke(0x4000)
+  horse:update_back_hoof(left_cursor * 10)
+  horse:update_front_hoof(right_cursor * 10)
 end
 
 function _update()
@@ -17,9 +23,11 @@ function _update()
     local char = readtext()
     if sub(left_text, left_cursor, true) == char and left_cursor + 1 < right_cursor then
       left_cursor = left_cursor + 1
+      horse:update_back_hoof(left_cursor * 10)
     end
     if sub(right_text, right_cursor, true) == char and right_cursor - left_cursor < 6 then
       right_cursor = right_cursor + 1
+      horse:update_front_hoof(right_cursor * 10)
     end
   end
 end
@@ -40,6 +48,7 @@ end
 
 function _draw()
   cls()
-  draw_line(left_text, left_cursor, 0, 30, left_color, untyped_color)
-  draw_line(right_text, right_cursor, 0, 40, right_color, untyped_color)
+  draw_line(left_text, left_cursor, 0, 130, left_color, untyped_color)
+  draw_line(right_text, right_cursor, 0, 140, right_color, untyped_color)
+  horse:draw()
 end
