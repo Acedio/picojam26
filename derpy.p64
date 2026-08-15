@@ -4,8 +4,28 @@ version 2
 :: gfx/
 :: map/
 :: sfx/
+:: src/
 :: main.lua
---[[pod_format="raw"]]
+--[[pod_format="raw",created="2026-08-15 05:31:37",modified="2026-08-15 05:46:35",revision=6]]
+function printable(tbl)
+  for k,v in pairs(tbl) do
+    print(k .. ": " .. v)
+  end
+end
+
+print(pwd())
+cp("/picojam26/src", "src")
+include("src/game.lua")
+:: src/test.lua
+function _init()
+  print("hey mike 2!")
+end
+
+function _update()
+end
+
+function _draw()
+end
 
 :: .info.pod
 --[[pod,created="2026-05-26 21:14:32",modified="2026-08-15 07:45:58",runtime=27,workspaces={{location="gfx/0.gfx#15",workspace_index=2},{location="map/0.map",workspace_index=3}}]]
