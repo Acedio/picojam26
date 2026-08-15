@@ -17,21 +17,260 @@ print(pwd())
 cp("/picojam26/src", "src")
 cd("src")
 include("game.lua")
-:: src/test.lua
+:: src/game.lua
+local Horse = include("horse.lua")
+local v2 = include("v2.lua")
+
+local intro = [[hello, and welcome to the derpy derby!
+press any key to start tutorial.]]
+
+local lines = {
+  {
+    top=" move the front legs by typing on this line",
+    bot="move the back legs by typing on this line",
+  },
+  {
+    top=" get to the finish line",
+    bot="without falling apart",
+  },
+  {
+    top=" today i had an apple for breakfast",
+    bot="gotta go fast today to win",
+  },
+  {
+    top=" the wind feels good on my face today",
+    bot="if we win this race, we get a prize",
+  },
+  {
+    top=" A lovely bouquet!",
+    bot="A pretty bouquet!",
+  },
+}
+
+local stage = 1
+local bottom_text = lines[stage].bot
+local top_text = lines[stage].top
+local bottom_cursor = 1
+local top_cursor = 2
+local bottom_color = 1
+local top_color = 2
+local untyped_color = 3
+
 function _init()
-  print("hey mike 2!")
+  horse = Horse:new{pos = v2.v2(0, 30)}
+  fetch("/system/fonts/lil_mono.font"):poke(0x4000)
+  horse:set_back_hoof(bottom_cursor * 10)
+  horse:set_front_hoof(top_cursor * 10)
 end
 
 function _update()
+  if peektext() then
+    local char = readtext()
+    if sub(top_text, top_cursor, true) == char and top_cursor - bottom_cursor < 6 then
+      top_cursor = top_cursor + 1
+      horse:set_front_hoof(top_cursor * 10)
+    end
+    if sub(bottom_text, bottom_cursor, true) == char and bottom_cursor + 1 < top_cursor then
+      bottom_cursor = bottom_cursor + 1
+      horse:set_back_hoof(bottom_cursor * 10)
+    end
+  end
+  horse:update()
+end
+
+function draw_cursor(cidx, x, y, col)
+  local x = (cidx - 1) * 5 - 1 + x
+  line(x, y, x, y + 8, col)
+end
+
+function draw_line(text, cursor, x, y, typed_col, untyped_col)
+  local typed_text = sub(text, 1, cursor - 1)
+  local untyped_text = sub(text, cursor)
+  local dx = print(typed_text, x, y, typed_col)
+  dx = print(untyped_text, dx, y, untyped_col)
+
+  draw_cursor(cursor, x, y, typed_col)
 end
 
 function _draw()
+  cls()
+  map()
+  draw_line(top_text, top_cursor, 10, 242, top_color, untyped_color)
+  draw_line(bottom_text, bottom_cursor, 10, 252, bottom_color, untyped_color)
+  horse:draw()
 end
 
+:: src/horse.lua
+local v2 = include("v2.lua")
+local Spring = include("spring.lua")
+
+local Horse = {}
+
+Horse.BODY_RECT = v2.v2(40,20)
+Horse.LEG_HEIGHT = 10
+Horse.COLOR = 1
+Horse.HOOF_COLOR = 2
+Horse.HOOF_SIZE = 8
+Horse.SPLITS_MULTIPLIER = 0.25
+
+function Horse:new(o)
+  local o = o or {pos = v2.v2(0,0)}
+  setmetatable(o, self)
+  self.__index = self
+
+  o.backhoof_pos = o.pos + v2.v2(0, Horse.BODY_RECT.y + Horse.LEG_HEIGHT)
+  o.fronthoof_pos = o.pos + Horse.BODY_RECT + v2.v2(0, Horse.LEG_HEIGHT)
+  o.body_spring = Spring:new{
+    pos = o.pos,
+    vel = v2.v2(0,0),
+    damp = 0.8,
+    strength = 0.1,
+    target = o.pos,
+  }
+
+  return o
+end
+
+function Horse:draw()
+  local body_pos = self.body_spring:get_pos()
+  oval(body_pos.x, body_pos.y, body_pos.x + Horse.BODY_RECT.x, body_pos.y + Horse.BODY_RECT.y, Horse.COLOR)
+  rect(self.backhoof_pos.x, self.backhoof_pos.y, self.backhoof_pos.x + Horse.HOOF_SIZE, self.backhoof_pos.y + Horse.HOOF_SIZE, Horse.HOOF_COLOR)
+  rect(self.fronthoof_pos.x, self.fronthoof_pos.y, self.fronthoof_pos.x + Horse.HOOF_SIZE, self.fronthoof_pos.y + Horse.HOOF_SIZE, Horse.HOOF_COLOR)
+end
+
+function Horse:update()
+  self.pos.x = (self.fronthoof_pos.x + self.backhoof_pos.x) / 2 - self.BODY_RECT.x / 2
+  local target = self.pos:copy()
+  target.y = self.pos.y + (self.fronthoof_pos.x - self.backhoof_pos.x) * Horse.SPLITS_MULTIPLIER
+  self.body_spring:set_target(target)
+  self.body_spring:update()
+end
+
+function Horse:set_back_hoof(new_x)
+  self.backhoof_pos.x = new_x
+end
+
+function Horse:set_front_hoof(new_x)
+  self.fronthoof_pos.x = new_x
+end
+
+return Horse
+
+:: src/spring.lua
+local v2 = include("v2.lua")
+
+local Spring = {}
+
+function Spring:new(o)
+  local o = o or {
+    pos = v2.v2(0,0),
+    vel = v2.v2(0,0),
+    damp = 1,
+    strength = 0,
+    target = v2.v2(0,0),
+  }
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+function Spring:set_target(target)
+  self.target = target
+end
+
+function Spring:update()
+  local force = (self.target - self.pos) * self.strength
+  self.vel = (self.vel + force) * self.damp
+  self.pos = self.pos + self.vel
+end
+
+function Spring:get_pos()
+  return self.pos
+end
+
+return Spring
+
+:: src/v2.lua
+V2 = {}
+
+function V2:new(o)
+  local o = o or {}
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+function V2.__eq(a,b)
+  return a.x == b.x and a.y == b.y
+end
+
+function V2.__add(a,b)
+  return V2.v2(a.x+b.x, a.y+b.y)
+end
+
+function V2.__sub(a,b)
+  return V2.v2(a.x-b.x, a.y-b.y)
+end
+
+function V2.__mul(a,b)
+  if type(b) == "number" then
+    return V2.v2(a.x * b, a.y * b)
+  end
+  if type(a) == "number" then
+    return V2.v2(b.x * a, b.y * a)
+  end
+  assert(false, "unsupported multiplication: " .. type(a) .. "*" .. type(b))
+end
+
+function V2.__div(a,b)
+  assert(type(b) == "number")
+  return V2.v2(a.x / b, a.y / b)
+end
+
+function V2.__idiv(a,b)
+  assert(type(b) == "number")
+  return V2.v2(a.x \ b, a.y \ b)
+end
+
+function V2:copy()
+  return V2.v2(self.x, self.y)
+end
+
+function V2:len()
+  return sqrt(self.x * self.x + self.y * self.y)
+end
+
+function V2:normal()
+  local l = self:len()
+  if l < 0.001 then
+    return V2.v2(0,0)
+  end
+  return self / l
+end
+
+-- Serializes an (integer) vector into a single number, for use as table keys.
+-- TODO: Rename to key()
+function V2:serialize()
+  return bor(
+    band(0xFFFF, self.x),
+    lshr(self.y, 16))
+end
+
+function V2.from_serialized(serialized)
+  return V2.v2(band(serialized, 0xFFFF), shl(serialized, 16))
+end
+
+-- Convenience constructor.
+function V2.v2(x, y)
+  return V2:new{x=x,y=y}
+end
+
+return V2
+
 :: .info.pod
---[[pod,created="2026-05-26 21:14:32",modified="2026-08-15 07:45:58",runtime=27,workspaces={{location="gfx/0.gfx#15",workspace_index=2},{location="map/0.map",workspace_index=3}}]]
+--[[pod,created="2026-05-26 21:14:32",modified="2026-08-15 10:23:41",runtime=27,workspaces={{location="src/v2.lua#15",workspace_index=1},{location="gfx/0.gfx#15",workspace_index=2},{location="map/0.map",workspace_index=3}}]]
 :: gfx/.info.pod
---[[pod,created="2026-05-26 21:14:32",modified="2026-08-15 07:45:58"]]
+--[[pod,created="2026-05-26 21:14:32",modified="2026-08-15 10:23:41"]]
 :: gfx/0.gfx
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI1LTAxLTE3IDEwOjM1OjQ4Iixtb2RpZmllZD0iMjAyNi0w
 OC0xNSAwNzo0Mjo0MCIscmV2aXNpb249MjRdXWx6NAB4AQAA4TkAAPEne1swXT17Ym1wPXB4dQBD
@@ -43,7 +282,7 @@ ACO1I8cT1wP3A7AnAOdTAA8EAA8PbAAjBBcBDwQAEL-nACew9wMD1xPHI0UBUQ-iAGAPMQI4b-8P
 0P8fEDwAJQ_OBCQf8DgA--------------------------------------------------------
 -------------41QbT04fX0=
 :: map/.info.pod
---[[pod,created="2026-05-26 21:14:32",modified="2026-08-15 07:45:58"]]
+--[[pod,created="2026-05-26 21:14:32",modified="2026-08-15 10:23:41"]]
 :: map/0.map
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI1LTAxLTE3IDEwOjM1OjQ4Iixtb2RpZmllZD0iMjAyNi0w
 OC0xNSAwNzo0NTo1OCIscmV2aXNpb249MjFdXWx6NADXAAAAUwEAAPENe3tibXA9cHh1AEyAICAA
@@ -52,11 +291,13 @@ AB8BAB8FAD8OAB8PAB8OAD8GABFfBgD-AgAKAB0GAAAIAAAMAB0AAAANCQADTwAQABwMAA0fHQkA
 F-QTCQAdBwAACwAsaGlkZGVuPWZhbHNlLHBhbl94PS00Ni4xNgEAETcWAJV5PS0xNDguODMBAKIs
 dGlsZV9oPTE2CgAQdwoAsHpvb209MC4yNX19
 :: sfx/.info.pod
---[[pod,created="2026-05-26 21:14:32",modified="2026-08-15 07:45:58"]]
+--[[pod,created="2026-05-26 21:14:32",modified="2026-08-15 10:23:41"]]
 :: sfx/0.sfx
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI1LTA3LTMxIDA4OjMwOjI4Iixtb2RpZmllZD0iMjAyNS0w
 Ny0zMSAwODozMDoyOCIscmV2aXNpb249MF1dbHo0AKAAAAALCgAA-zBweHUAAygAAAQABA9AEAIO
 AAGgASACoA4ADxAADfDKAQIDQA8PkAQFBgdADJAICQoLQAyQDwwPDQ8ODEAM8P8BAOv-J6oBEAYP
 MBABIAEgAfAAAhACDhABIA8hIAEwD0Dwww8oD--wxg-4Cg--D4AP9w8NAfAJARAGDjAA------_9
 H-8BAKzPyA9AAA8QQP--sPD-AQD-6lD-----KQ==
+:: src/.info.pod
+--[[pod,created="2026-08-16 02:49:36",modified="2026-08-16 02:49:36"]]
 :: [eoc]
