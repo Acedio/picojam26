@@ -11,7 +11,7 @@ function Title:new()
   self.__index = self
   o.title = bubbletext("derpy derby", "\^w\^t", 10, {x=nil, y=50})
   o.anykey = bubbletext("press any key!", "", 8, {x=nil, y=170})
-  o.credits = bubbletext("by cj, zep, acedio 2026", "", 5, {x=360, y=250})
+  o.credits = bubbletext("by illuminesce, zep, acedio 2026", "", 5, {x=314, y=250})
   o.hormse_x = -80
   o.front_hoof_x = -80
   o.back_hoof_x = -80

@@ -9,7 +9,7 @@ local States = {
 local state = States.TITLE
 
 function _init()
-  fetch("podnet://1/jam/mfh.sfx"):poke(0x30000)
+  fetch("mfh.sfx"):poke(0x30000)
   music()
   current = Title:new()
 end

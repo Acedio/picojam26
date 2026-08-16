@@ -417,7 +417,7 @@ function Title:new()
   self.__index = self
   o.title = bubbletext("derpy derby", "\^w\^t", 10, {x=nil, y=50})
   o.anykey = bubbletext("press any key!", "", 8, {x=nil, y=170})
-  o.credits = bubbletext("by cj, zep, acedio 2026", "", 5, {x=360, y=250})
+  o.credits = bubbletext("by illuminesce, zep, acedio 2026", "", 5, {x=314, y=250})
   o.hormse_x = -80
   o.front_hoof_x = -80
   o.back_hoof_x = -80
@@ -546,9 +546,9 @@ end
 return V2
 
 :: .info.pod
---[[pod,created="2026-05-26 21:14:32",modified="2026-08-16 09:30:29",runtime=27,workspaces={{location="gfx/0.gfx#106",workspace_index=2},{location="map/0.map",workspace_index=3}}]]
+--[[pod,created="2026-05-26 21:14:32",modified="2026-08-16 09:38:28",runtime=27,workspaces={{location="gfx/0.gfx#106",workspace_index=2},{location="map/0.map",workspace_index=3}}]]
 :: gfx/.info.pod
---[[pod,created="2026-05-26 21:14:32",modified="2026-08-16 09:30:29"]]
+--[[pod,created="2026-05-26 21:14:32",modified="2026-08-16 09:38:28"]]
 :: gfx/0.gfx
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI1LTAxLTE3IDEwOjM1OjQ4Iixtb2RpZmllZD0iMjAyNi0w
 OC0xNiAwNjozMDowNyIscmV2aXNpb249NDJdXWx6NABSCAAAdUQAAPEoe1swXT17Ym1wPXB4dQBD
@@ -591,7 +591,7 @@ eXA58GzVAF8kAOQCAP8HIMQgxDC0MLRApFCUYIRwdJBU0BTwAFgAJSH0X_kDAOsDAAQCX3RwNPAM
 TAAlnxTQFNAE4ATwv-QBJw86AP----------------------------------------------jVBt
 PTh9fQ==
 :: map/.info.pod
---[[pod,created="2026-05-26 21:14:32",modified="2026-08-16 09:30:29"]]
+--[[pod,created="2026-05-26 21:14:32",modified="2026-08-16 09:38:28"]]
 :: map/0.map
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI1LTAxLTE3IDEwOjM1OjQ4Iixtb2RpZmllZD0iMjAyNi0w
 OC0xNiAwNjoyOToxNyIscmV2aXNpb249MzNdXWx6NADeAAAAZwEAAPEQe3tibXA9cHh1AEyAICAA
@@ -600,7 +600,7 @@ ABgAEQY-ABQALQARCA8AFBMkABENJAC0HwEAHwUAHQ4AAT4GAB0PDAAPBgAEFEFaABEAWgAYG88A
 AmkAB34ARAADABwhABEgGwD1Df8CAAQsaGlkZGVuPWZhbHNlLHBhbl94PTEuODMBAAEUAHR5PTQ3
 LjE2AQCyNyx0aWxlX2g9MTYKABB3CgCgem9vbT0wLjV9fQ==
 :: sfx/.info.pod
---[[pod,created="2026-05-26 21:14:32",modified="2026-08-16 09:30:29"]]
+--[[pod,created="2026-05-26 21:14:32",modified="2026-08-16 09:38:28"]]
 :: sfx/0.sfx
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI1LTA3LTMxIDA4OjMwOjI4Iixtb2RpZmllZD0iMjAyNS0w
 Ny0zMSAwODozMDoyOCIscmV2aXNpb249MF1dbHo0AKAAAAALCgAA-zBweHUAAygAAAQABA9AEAIO
@@ -608,5 +608,5 @@ AAGgASACoA4ADxAADfDKAQIDQA8PkAQFBgdADJAICQoLQAyQDwwPDQ8ODEAM8P8BAOv-J6oBEAYP
 MBABIAEgAfAAAhACDhABIA8hIAEwD0Dwww8oD--wxg-4Cg--D4AP9w8NAfAJARAGDjAA------_9
 H-8BAKzPyA9AAA8QQP--sPD-AQD-6lD-----KQ==
 :: src/.info.pod
---[[pod,created="2026-08-16 09:14:25",modified="2026-08-16 09:30:29"]]
+--[[pod,created="2026-08-16 09:38:23",modified="2026-08-16 09:38:28"]]
 :: [eoc]
