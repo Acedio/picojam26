@@ -35,9 +35,12 @@ local top_cursor = 1
 local bottom_color = 8
 local top_color = 9
 local untyped_color = 3
+local track_x = 0
+
+local SCREEN_WIDTH = 480
 
 function _init()
-  horse = Horse:new{pos = v2.v2(0, 30)}
+  horse = Horse:new{pos = v2.v2(0, 140)}
   fetch("/system/fonts/lil_mono.font"):poke(0x4000)
   horse:set_back_hoof(bottom_cursor * 10)
   horse:set_front_hoof(top_cursor * 10)
@@ -72,10 +75,18 @@ function draw_line(text, cursor, x, y, typed_col, untyped_col)
   draw_cursor(cursor, x, y, typed_col)
 end
 
+function draw_course()
+  local first_x = flr(track_x / SCREEN_WIDTH) * SCREEN_WIDTH
+  map(0,0,first_x,0)
+  map(0,0,first_x + SCREEN_WIDTH,0)
+end
+
 function _draw()
   cls()
-  map()
+  camera(track_x,0)
+  draw_course()
+  horse:draw()
+  camera(0,0)
   draw_line(top_text, top_cursor, 10, 232, top_color, untyped_color)
   draw_line(bottom_text, bottom_cursor, 10, 252, bottom_color, untyped_color)
-  horse:draw()
 end
