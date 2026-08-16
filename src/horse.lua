@@ -4,7 +4,7 @@ local Spring = include("spring.lua")
 local Horse = {}
 
 Horse.BODY_RECT = v2.v2(64,32)
-Horse.LEG_HEIGHT = 10
+Horse.LEG_HEIGHT = 0
 Horse.COLOR = 4
 Horse.SHADOW_COLOR = 20
 Horse.HOOF_COLOR = 2
@@ -19,11 +19,26 @@ function Horse:new(o)
   self.__index = self
 
   o.backhoof_pos = o.pos + v2.v2(0, Horse.BODY_RECT.y + Horse.LEG_HEIGHT)
+  o.backhoof_spring = Spring:new{
+    pos = o.backhoof_pos,
+    vel = v2.v2(0,0),
+    damp = 0.8,
+    strength = 0.1,
+    target = o.backhoof_pos,
+  }
   o.fronthoof_pos = o.pos + Horse.BODY_RECT + v2.v2(0, Horse.LEG_HEIGHT)
+  o.fronthoof_spring = Spring:new{
+    pos = o.fronthoof_pos,
+    vel = v2.v2(0,0),
+    damp = 0.8,
+    strength = 0.1,
+    target = o.fronthoof_pos,
+  }
+
   o.body_spring = Spring:new{
     pos = o.pos,
     vel = v2.v2(0,0),
-    damp = 0.8,
+    damp = 0.9,
     strength = 0.1,
     target = o.pos,
   }
@@ -49,12 +64,12 @@ function p8spr(s, w, h, dx, dy)
 end
 
 function Horse:draw()
+  p8spr(0x1a, 3, 2, self.backhoof_spring:get_pos().x - 2, self.backhoof_spring:get_pos().y)
+  p8spr(0x30, 3, 2, self.fronthoof_spring:get_pos().x + 2, self.fronthoof_spring:get_pos().y)
   local body_pos = self.body_spring:get_pos()
   ovalfill(body_pos.x - 2, body_pos.y, body_pos.x + Horse.BODY_RECT.x, body_pos.y + Horse.BODY_RECT.y + 2, Horse.SHADOW_COLOR)
   ovalfill(body_pos.x, body_pos.y, body_pos.x + Horse.BODY_RECT.x, body_pos.y + Horse.BODY_RECT.y, Horse.COLOR)
   p8spr(0x0015, 3, 3, self.head_spring:get_pos().x, self.head_spring:get_pos().y)
-  rect(self.backhoof_pos.x, self.backhoof_pos.y, self.backhoof_pos.x + Horse.HOOF_SIZE, self.backhoof_pos.y + Horse.HOOF_SIZE, Horse.HOOF_COLOR)
-  rect(self.fronthoof_pos.x, self.fronthoof_pos.y, self.fronthoof_pos.x + Horse.HOOF_SIZE, self.fronthoof_pos.y + Horse.HOOF_SIZE, Horse.HOOF_COLOR)
 end
 
 function Horse:update()
@@ -65,6 +80,11 @@ function Horse:update()
   self.body_spring:update()
   self.head_spring:set_target(self.body_spring:get_pos() + Horse.HEAD_OFFSET)
   self.head_spring:update()
+
+  self.fronthoof_spring:set_target(self.fronthoof_pos)
+  self.fronthoof_spring:update()
+  self.backhoof_spring:set_target(self.backhoof_pos)
+  self.backhoof_spring:update()
 end
 
 function Horse:set_back_hoof(new_x)
