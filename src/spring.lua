@@ -19,6 +19,10 @@ function Spring:set_target(target)
   self.target = target
 end
 
+function Spring:perturb(v)
+  self.vel += v
+end
+
 function Spring:update()
   local force = (self.target - self.pos) * self.strength
   self.vel = (self.vel + force) * self.damp
