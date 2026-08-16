@@ -15,7 +15,7 @@ local lines = {
   },
   {
     top="today i had an apple for breakfast",
-    bot="gotta go fast today to win",
+    bot="gotta go fast today to winnn",
   },
   {
     top="the wind feels good on my face today",
@@ -35,15 +35,41 @@ local top_cursor = 1
 local bottom_color = 8
 local top_color = 9
 local untyped_color = 3
+-- Accumulate characters across lines.
+local chars_so_far = 0
 local track_x = 0
+local track_x_interpolate_from = 0
+local track_x_interpolate_t = 100
+local TRACK_X_INTERPOLATE_FRAMES = 20
 
 local SCREEN_WIDTH = 480
+local CHAR_WIDTH_PX = 10
 
 function _init()
-  horse = Horse:new{pos = v2.v2(0, 140)}
+  fetch("podnet://1/jam/mfh.sfx"):poke(0x30000)
+  music()
+  -- Our heroooo, Hormse
+  hormse = Horse:new{pos = v2.v2(0, 140)}
   fetch("/system/fonts/lil_mono.font"):poke(0x4000)
-  horse:set_back_hoof(bottom_cursor * 10)
-  horse:set_front_hoof(top_cursor * 10)
+  hormse:set_back_hoof(bottom_cursor * CHAR_WIDTH_PX)
+  hormse:set_front_hoof(top_cursor * CHAR_WIDTH_PX)
+end
+
+function lines_complete()
+  return top_cursor > #lines[stage].top and bottom_cursor > #lines[stage].bot
+end
+
+function next_stage()
+  chars_so_far += #lines[stage].top
+  stage += 1
+  top_cursor = 1
+  bottom_cursor = 1
+  bottom_text = lines[stage].bot
+  top_text = lines[stage].top
+  -- TODO: interpolate to this.
+  track_x_interpolate_from = track_x
+  track_x_interpolate_t = 0
+  track_x = chars_so_far * CHAR_WIDTH_PX
 end
 
 function _update()
@@ -51,18 +77,23 @@ function _update()
     local char = readtext()
     if sub(top_text, top_cursor, true) == char and top_cursor - bottom_cursor < 6 then
       top_cursor = top_cursor + 1
-      horse:set_front_hoof(top_cursor * 10)
+      hormse:set_front_hoof((chars_so_far + top_cursor) * CHAR_WIDTH_PX)
     end
     if sub(bottom_text, bottom_cursor, true) == char and bottom_cursor < top_cursor then
       bottom_cursor = bottom_cursor + 1
-      horse:set_back_hoof(bottom_cursor * 10)
+      hormse:set_back_hoof((chars_so_far + bottom_cursor) * CHAR_WIDTH_PX)
     end
   end
-  horse:update()
+
+  if lines_complete() then
+    next_stage()
+  end
+  track_x_interpolate_t += 1
+  hormse:update()
 end
 
 function draw_cursor(cidx, x, y, col)
-  local x = (cidx - 1) * 10 - 1 + x
+  local x = (cidx - 1) * CHAR_WIDTH_PX - 1 + x
   line(x, y, x, y + 16, col)
 end
 
@@ -75,17 +106,25 @@ function draw_line(text, cursor, x, y, typed_col, untyped_col)
   draw_cursor(cursor, x, y, typed_col)
 end
 
-function draw_course()
-  local first_x = flr(track_x / SCREEN_WIDTH) * SCREEN_WIDTH
+function draw_course(left_x)
+  local first_x = flr(left_x / SCREEN_WIDTH) * SCREEN_WIDTH
   map(0,0,first_x,0)
   map(0,0,first_x + SCREEN_WIDTH,0)
 end
 
+function serp(t)
+  return (1 + sin(0.25 + 0.5*t))/2
+end
+
 function _draw()
   cls()
-  camera(track_x,0)
-  draw_course()
-  horse:draw()
+  local left_x = track_x
+  if track_x_interpolate_t < TRACK_X_INTERPOLATE_FRAMES then
+    left_x = track_x_interpolate_from + (track_x - track_x_interpolate_from) * serp(track_x_interpolate_t / TRACK_X_INTERPOLATE_FRAMES)
+  end
+  camera(left_x,0)
+  draw_course(left_x)
+  hormse:draw()
   camera(0,0)
   draw_line(top_text, top_cursor, 10, 232, top_color, untyped_color)
   draw_line(bottom_text, bottom_cursor, 10, 252, bottom_color, untyped_color)
