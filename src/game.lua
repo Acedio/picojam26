@@ -86,7 +86,11 @@ function _update()
   end
 
   if lines_complete() then
-    next_stage()
+    if not is_last_level() then
+      next_stage()
+    else
+      -- win!
+    end
   end
   track_x_interpolate_t += 1
   hormse:update()
@@ -106,10 +110,22 @@ function draw_line(text, cursor, x, y, typed_col, untyped_col)
   draw_cursor(cursor, x, y, typed_col)
 end
 
+function is_last_level()
+  return stage == #lines
+end
+
+function draw_finish_line()
+  local x = track_x + #lines[stage].top * CHAR_WIDTH_PX
+  map(30,0,x,0)
+end
+
 function draw_course(left_x)
   local first_x = flr(left_x / SCREEN_WIDTH) * SCREEN_WIDTH
   map(0,0,first_x,0)
   map(0,0,first_x + SCREEN_WIDTH,0)
+  if is_last_level() then
+    draw_finish_line()
+  end
 end
 
 function serp(t)
