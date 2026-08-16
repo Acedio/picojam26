@@ -48,7 +48,7 @@ function Horse:new(o)
   o.head_spring = Spring:new{
     pos = head_pos,
     vel = v2.v2(0,0),
-    damp = 0.8,
+    damp = 0.95,
     strength = 0.1,
     target = head_pos,
   }
