@@ -1,11 +1,15 @@
 local v2 = include("v2.lua")
 
+include("texteffects.lua")
+
 local Title = {}
 
 function Title:new()
   local o = {}
   setmetatable(o, self)
   self.__index = self
+  o.title = bubbletext("derpy derby", "\^w\^t", {x=nil, y=50})
+  o.anykey = bubbletext("press any key!", "", {x=nil, y=170})
   o:init()
   return o
 end
@@ -19,6 +23,8 @@ function Title:init()
 end
 
 function Title:update()
+  self.title:update()
+  self.anykey:update()
   if peektext() then
     readtext()
     return true
@@ -27,7 +33,10 @@ function Title:update()
 end
 
 function Title:draw()
+  cls()
   map(0,0)
+  self.title:draw()
+  self.anykey:draw()
 end
 
 return Title
