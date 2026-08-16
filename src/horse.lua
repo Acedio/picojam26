@@ -10,6 +10,7 @@ Horse.SHADOW_COLOR = 20
 Horse.HOOF_COLOR = 2
 Horse.HOOF_SIZE = 8
 Horse.HEAD_OFFSET = v2.v2(45,-38)
+Horse.TAIL_OFFSET = v2.v2(-40,0)
 -- TODO: This should be based on body size.
 Horse.SPLITS_MULTIPLIER = 0.25
 
@@ -51,6 +52,14 @@ function Horse:new(o)
     strength = 0.1,
     target = head_pos,
   }
+  local tail_pos = o.body_spring:get_pos() + Horse.TAIL_OFFSET
+  o.tail_spring = Spring:new{
+    pos = tail_pos,
+    vel = v2.v2(0,0),
+    damp = 0.8,
+    strength = 0.2,
+    target = tail_pos,
+  }
 
   return o
 end
@@ -66,6 +75,7 @@ end
 function Horse:draw()
   p8spr(0x1a, 3, 2, self.backhoof_spring:get_pos().x - 2, self.backhoof_spring:get_pos().y)
   p8spr(0x30, 3, 2, self.fronthoof_spring:get_pos().x + 2, self.fronthoof_spring:get_pos().y)
+  p8spr(69, 3, 4, self.tail_spring:get_pos().x, self.tail_spring:get_pos().y)
   local body_pos = self.body_spring:get_pos()
   ovalfill(body_pos.x - 2, body_pos.y, body_pos.x + Horse.BODY_RECT.x, body_pos.y + Horse.BODY_RECT.y + 2, Horse.SHADOW_COLOR)
   ovalfill(body_pos.x, body_pos.y, body_pos.x + Horse.BODY_RECT.x, body_pos.y + Horse.BODY_RECT.y, Horse.COLOR)
@@ -80,6 +90,8 @@ function Horse:update()
   self.body_spring:update()
   self.head_spring:set_target(self.body_spring:get_pos() + Horse.HEAD_OFFSET)
   self.head_spring:update()
+  self.tail_spring:set_target(self.body_spring:get_pos() + Horse.TAIL_OFFSET)
+  self.tail_spring:update()
 
   self.fronthoof_spring:set_target(self.fronthoof_pos)
   self.fronthoof_spring:update()
@@ -89,10 +101,12 @@ end
 
 function Horse:set_back_hoof(new_x)
   self.backhoof_pos.x = new_x
+  self.backhoof_spring:perturb(v2.v2(0, -5))
 end
 
 function Horse:set_front_hoof(new_x)
   self.fronthoof_pos.x = new_x
+  self.fronthoof_spring:perturb(v2.v2(0, -5))
 end
 
 return Horse
