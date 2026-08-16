@@ -43,6 +43,18 @@ function V2:copy()
   return V2.v2(self.x, self.y)
 end
 
+function V2:len()
+  return sqrt(self.x * self.x + self.y * self.y)
+end
+
+function V2:normal()
+  local l = self:len()
+  if l < 0.001 then
+    return V2.v2(0,0)
+  end
+  return self / l
+end
+
 -- Serializes an (integer) vector into a single number, for use as table keys.
 -- TODO: Rename to key()
 function V2:serialize()
