@@ -99,13 +99,13 @@ function Horse:update()
   self.backhoof_spring:update()
 end
 
-function Horse:set_back_hoof(new_x)
-  self.backhoof_pos.x = new_x
+function Horse:set_back_hoof(new_pos)
+  self.backhoof_pos = new_pos + Horse.BODY_RECT
   self.backhoof_spring:perturb(v2.v2(0, -5))
 end
 
-function Horse:set_front_hoof(new_x)
-  self.fronthoof_pos.x = new_x
+function Horse:set_front_hoof(new_pos)
+  self.fronthoof_pos = new_pos + Horse.BODY_RECT
   self.fronthoof_spring:perturb(v2.v2(0, -5))
 end
 

@@ -38,10 +38,10 @@ function Title:update()
     self.hormse = Horse:new{pos = v2.v2(self.hormse_x, 140)}
   end
   if self.hormse_x > (flr(self.hormse_x / 20) * 20) then
-    self.hormse:set_front_hoof(self.hormse_x)
+    self.hormse:set_front_hoof(v2.v2(self.hormse_x, 140))
   end
   if self.hormse_x - 50 > (flr((self.hormse_x - 50) / 20) * 20) then
-    self.hormse:set_back_hoof(self.hormse_x - 50)
+    self.hormse:set_back_hoof(v2.v2(self.hormse_x - 50, 140))
   end
   self.hormse:update()
   if peektext() then

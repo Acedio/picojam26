@@ -11,6 +11,8 @@ local Race = {
   SCREEN_WIDTH = 480,
   CHAR_WIDTH_PX = 10,
 
+  HORMSE_Y = 140,
+
   LINES = {
     {
       top="move the front legs by typing on this line",
@@ -37,7 +39,7 @@ local Race = {
 
 function Race:new()
   local o = {
-    hormse = Horse:new{pos = v2.v2(0, 140)},
+    hormse = Horse:new{pos = v2.v2(0, Race.HORMSE_Y)},
     stage = 1,
     bottom_text = Race.LINES[1].bot,
     top_text = Race.LINES[1].top,
@@ -48,12 +50,14 @@ function Race:new()
     track_x = 0,
     track_x_interpolate_from = 0,
     track_x_interpolate_t = 100,
+    party = 0,
+    party_legs = v2.v2(0,0),
   }
   setmetatable(o, self)
   self.__index = self
 
-  o.hormse:set_back_hoof(o.bottom_cursor * Race.CHAR_WIDTH_PX)
-  o.hormse:set_front_hoof(o.top_cursor * Race.CHAR_WIDTH_PX)
+  o.hormse:set_back_hoof(v2.v2((o.bottom_cursor) * Race.CHAR_WIDTH_PX, Race.HORMSE_Y))
+  o.hormse:set_front_hoof(v2.v2((o.top_cursor) * Race.CHAR_WIDTH_PX, Race.HORMSE_Y))
   o:init()
   return o
 end
@@ -84,17 +88,24 @@ function Race:update()
     local char = readtext()
     if sub(self.top_text, self.top_cursor, true) == char and self.top_cursor - self.bottom_cursor < 6 then
       self.top_cursor = self.top_cursor + 1
-      self.hormse:set_front_hoof((self.chars_so_far + self.top_cursor) * Race.CHAR_WIDTH_PX)
+      self.hormse:set_front_hoof(v2.v2((self.chars_so_far + self.top_cursor) * Race.CHAR_WIDTH_PX, Race.HORMSE_Y))
     end
     if sub(self.bottom_text, self.bottom_cursor, true) == char and self.bottom_cursor < self.top_cursor then
       self.bottom_cursor = self.bottom_cursor + 1
-      self.hormse:set_back_hoof((self.chars_so_far + self.bottom_cursor) * Race.CHAR_WIDTH_PX)
+      self.hormse:set_back_hoof(v2.v2((self.chars_so_far + self.bottom_cursor) * Race.CHAR_WIDTH_PX, Race.HORMSE_Y))
     end
   end
 
   if self:stage_complete() then
     if not self:is_last_level() then
       self:next_stage()
+    else
+      self.party += 1
+      self.party_legs = v2.v2(0, -80*abs(sin(self.party / 20)))
+      if party % 18 == 0 then
+        self.hormse:set_front_hoof(self.party_legs + v2.v2((self.chars_so_far + self.top_cursor) * Race.CHAR_WIDTH_PX, Race.HORMSE_Y))
+        self.hormse:set_back_hoof(self.party_legs + v2.v2((self.chars_so_far + self.bottom_cursor) * Race.CHAR_WIDTH_PX, Race.HORMSE_Y))
+      end
     end
   end
   self.track_x_interpolate_t += 1
