@@ -18,124 +18,35 @@ cp("/picojam26/src", "src")
 cd("src")
 include("game.lua")
 :: src/game.lua
-local Horse = include("horse.lua")
-local v2 = include("v2.lua")
+local Race = include("race.lua")
+local Title = include("title.lua")
 
-local intro = [[hello, and welcome to the derpy derby!
-press any key to start tutorial.]]
-
-local lines = {
-  {
-    top="move the front legs by typing on this line",
-    bot="move the back legs by typing on this line",
-  },
-  {
-    top="get to the finish line",
-    bot="without falling apart",
-  },
-  {
-    top="today i had an apple for breakfast",
-    bot="gotta go fast today to win",
-  },
-  {
-    top="the wind feels good on my face today",
-    bot="if we win this race, we get a prize",
-  },
-  {
-    top="A lovely bouquet!",
-    bot="A pretty bouquet!",
-  },
+local States = {
+  TITLE = 1,
+  RACE = 2,
+  END = 3,
 }
-
-local stage = 1
-local bottom_text = lines[stage].bot
-local top_text = lines[stage].top
-local bottom_cursor = 1
-local top_cursor = 1
-local bottom_color = 8
-local top_color = 9
-local untyped_color = 3
--- Accumulate characters across lines.
-local chars_so_far = 0
-local track_x = 0
-local track_x_interpolate_from = 0
-local track_x_interpolate_t = 100
-local TRACK_X_INTERPOLATE_TIME = 10
-
-local SCREEN_WIDTH = 480
-local CHAR_WIDTH_PX = 10
+local state = States.TITLE
 
 function _init()
-  horse = Horse:new{pos = v2.v2(0, 140)}
-  fetch("/system/fonts/lil_mono.font"):poke(0x4000)
-  horse:set_back_hoof(bottom_cursor * 10)
-  horse:set_front_hoof(top_cursor * 10)
-end
-
-function lines_complete()
-  return top_cursor >= #lines[stage].top and bottom_cursor >= #lines[stage].bot
-end
-
-function next_stage()
-  chars_so_far += #lines[stage].top
-  stage += 1
-  top_cursor = 1
-  bottom_cursor = 1
-  bottom_text = lines[stage].bot
-  top_text = lines[stage].top
-  -- TODO: interpolate to this.
-  track_x_interpolate_from = track_x
-  track_x_interpolate_time = 0
-  track_x = chars_so_far * CHAR_WIDTH_PX
+  fetch("podnet://1/jam/mfh.sfx"):poke(0x30000)
+  music()
+  current = Title:new()
 end
 
 function _update()
-  if peektext() then
-    local char = readtext()
-    if sub(top_text, top_cursor, true) == char and top_cursor - bottom_cursor < 6 then
-      top_cursor = top_cursor + 1
-      horse:set_front_hoof((chars_so_far + top_cursor) * CHAR_WIDTH_PX)
-    end
-    if sub(bottom_text, bottom_cursor, true) == char and bottom_cursor < top_cursor then
-      bottom_cursor = bottom_cursor + 1
-      horse:set_back_hoof((chars_so_far + bottom_cursor) * CHAR_WIDTH_PX)
-    end
+  local ret = current:update()
+  if state == States.TITLE and ret then
+    state = States.RACE
+    current = Race:new()
+  elseif state == States.RACE and ret then
+    state = States.TITLE
+    current = Title:new()
   end
-
-  if lines_complete() then
-    next_stage()
-  end
-  horse:update()
-end
-
-function draw_cursor(cidx, x, y, col)
-  local x = (cidx - 1) * 10 - 1 + x
-  line(x, y, x, y + 16, col)
-end
-
-function draw_line(text, cursor, x, y, typed_col, untyped_col)
-  local typed_text = sub(text, 1, cursor - 1)
-  local untyped_text = sub(text, cursor)
-  local dx = print("\^w\^t" .. typed_text, x, y, typed_col)
-  dx = print("\^w\^t" .. untyped_text, dx, y, untyped_col)
-
-  draw_cursor(cursor, x, y, typed_col)
-end
-
-function draw_course()
-  local first_x = flr(track_x / SCREEN_WIDTH) * SCREEN_WIDTH
-  map(0,0,first_x,0)
-  map(0,0,first_x + SCREEN_WIDTH,0)
 end
 
 function _draw()
-  cls()
-  camera(track_x,0)
-  draw_course()
-  horse:draw()
-  camera(0,0)
-  draw_line(top_text, top_cursor, 10, 232, top_color, untyped_color)
-  draw_line(bottom_text, bottom_cursor, 10, 252, bottom_color, untyped_color)
+  current:draw()
 end
 
 :: src/horse.lua
@@ -215,12 +126,12 @@ end
 
 function Horse:draw()
   p8spr(0x1a, 3, 2, self.backhoof_spring:get_pos().x - 2, self.backhoof_spring:get_pos().y)
-  p8spr(0x30, 3, 2, self.fronthoof_spring:get_pos().x + 2, self.fronthoof_spring:get_pos().y)
   p8spr(69, 3, 4, self.tail_spring:get_pos().x, self.tail_spring:get_pos().y)
   local body_pos = self.body_spring:get_pos()
   ovalfill(body_pos.x - 2, body_pos.y, body_pos.x + Horse.BODY_RECT.x, body_pos.y + Horse.BODY_RECT.y + 2, Horse.SHADOW_COLOR)
   ovalfill(body_pos.x, body_pos.y, body_pos.x + Horse.BODY_RECT.x, body_pos.y + Horse.BODY_RECT.y, Horse.COLOR)
   p8spr(64, 5, 4, self.head_spring:get_pos().x, self.head_spring:get_pos().y)
+  p8spr(0x30, 3, 2, self.fronthoof_spring:get_pos().x + 2, self.fronthoof_spring:get_pos().y)
 end
 
 function Horse:update()
@@ -251,6 +162,163 @@ function Horse:set_front_hoof(new_x)
 end
 
 return Horse
+
+:: src/race.lua
+local Horse = include("horse.lua")
+local v2 = include("v2.lua")
+
+local Race = {
+  TRACK_X_INTERPOLATE_FRAMES = 20,
+
+  BOTTOM_COLOR = 18,
+  TOP_COLOR = 24,
+  UNTYPED_COLOR = 3,
+
+  SCREEN_WIDTH = 480,
+  CHAR_WIDTH_PX = 10,
+
+  LINES = {
+    {
+      top="move the front legs by typing on this line",
+      bot="move the back legs by typing on this line",
+    },
+    {
+      top="get to the finish line",
+      bot="without falling apart",
+    },
+    {
+      top="today i had an apple for breakfast",
+      bot="gotta go fast today to winnn",
+    },
+    {
+      top="the wind feels good on my face today",
+      bot="if we win this race, we get a prize",
+    },
+    {
+      top="A lovely bouquet!",
+      bot="A pretty bouquet!",
+    },
+  },
+}
+
+function Race:new()
+  local o = {
+    hormse = Horse:new{pos = v2.v2(0, 140)},
+    stage = 1,
+    bottom_text = Race.LINES[1].bot,
+    top_text = Race.LINES[1].top,
+    bottom_cursor = 1,
+    top_cursor = 1,
+    -- Accumulate characters across Race.LINES.
+    chars_so_far = 0,
+    track_x = 0,
+    track_x_interpolate_from = 0,
+    track_x_interpolate_t = 100,
+  }
+  setmetatable(o, self)
+  self.__index = self
+
+  o.hormse:set_back_hoof(o.bottom_cursor * Race.CHAR_WIDTH_PX)
+  o.hormse:set_front_hoof(o.top_cursor * Race.CHAR_WIDTH_PX)
+  o:init()
+  return o
+end
+
+function Race:init()
+  -- Our heroooo, Hormse
+  fetch("/system/fonts/lil_mono.font"):poke(0x4000)
+end
+
+function Race:stage_complete()
+  return self.top_cursor > #Race.LINES[self.stage].top and self.bottom_cursor > #Race.LINES[self.stage].bot
+end
+
+function Race:next_stage()
+  self.chars_so_far += #Race.LINES[self.stage].top
+  self.stage += 1
+  self.top_cursor = 1
+  self.bottom_cursor = 1
+  self.bottom_text = Race.LINES[self.stage].bot
+  self.top_text = Race.LINES[self.stage].top
+  self.track_x_interpolate_from = self.track_x
+  self.track_x_interpolate_t = 0
+  self.track_x = self.chars_so_far * Race.CHAR_WIDTH_PX
+end
+
+function Race:update()
+  if peektext() then
+    local char = readtext()
+    if sub(self.top_text, self.top_cursor, true) == char and self.top_cursor - self.bottom_cursor < 6 then
+      self.top_cursor = self.top_cursor + 1
+      self.hormse:set_front_hoof((self.chars_so_far + self.top_cursor) * Race.CHAR_WIDTH_PX)
+    end
+    if sub(self.bottom_text, self.bottom_cursor, true) == char and self.bottom_cursor < self.top_cursor then
+      self.bottom_cursor = self.bottom_cursor + 1
+      self.hormse:set_back_hoof((self.chars_so_far + self.bottom_cursor) * Race.CHAR_WIDTH_PX)
+    end
+  end
+
+  if self:stage_complete() then
+    if not self:is_last_level() then
+      self:next_stage()
+    end
+  end
+  self.track_x_interpolate_t += 1
+  self.hormse:update()
+  return self:is_last_level() and self:stage_complete()
+end
+
+function draw_cursor(cidx, x, y, col)
+  local x = (cidx - 1) * Race.CHAR_WIDTH_PX - 1 + x
+  line(x, y, x, y + 16, col)
+end
+
+function Race:is_last_level()
+  return self.stage == #Race.LINES
+end
+
+function Race:draw_finish_line()
+  local x = self.track_x + #Race.LINES[self.stage].top * Race.CHAR_WIDTH_PX
+  map(30,0,x,0)
+end
+
+function Race:draw_course(left_x)
+  local first_x = flr(left_x / Race.SCREEN_WIDTH) * Race.SCREEN_WIDTH
+  map(0,0,first_x,0)
+  map(0,0,first_x + Race.SCREEN_WIDTH,0)
+  if self:is_last_level() then
+    self:draw_finish_line()
+  end
+end
+
+function serp(t)
+  return (1 + sin(0.25 + 0.5*t))/2
+end
+
+function draw_line(text, cursor, x, y, typed_col, untyped_col)
+  local typed_text = sub(text, 1, cursor - 1)
+  local untyped_text = sub(text, cursor)
+  local dx = print("\^w\^t" .. typed_text, x, y, typed_col)
+  dx = print("\^w\^t" .. untyped_text, dx, y, untyped_col)
+
+  draw_cursor(cursor, x, y, typed_col)
+end
+
+function Race:draw()
+  cls()
+  local left_x = self.track_x
+  if self.track_x_interpolate_t < Race.TRACK_X_INTERPOLATE_FRAMES then
+    left_x = self.track_x_interpolate_from + (self.track_x - self.track_x_interpolate_from) * serp(self.track_x_interpolate_t / Race.TRACK_X_INTERPOLATE_FRAMES)
+  end
+  camera(left_x,0)
+  self:draw_course(left_x)
+  self.hormse:draw()
+  camera(0,0)
+  draw_line(self.top_text, self.top_cursor, 10, 232, Race.TOP_COLOR, Race.UNTYPED_COLOR)
+  draw_line(self.bottom_text, self.bottom_cursor, 10, 252, Race.BOTTOM_COLOR, Race.UNTYPED_COLOR)
+end
+
+return Race
 
 :: src/spring.lua
 local v2 = include("v2.lua")
@@ -289,6 +357,116 @@ function Spring:get_pos()
 end
 
 return Spring
+
+:: src/texteffects.lua
+-- Create with this function, then add update() and draw() to the respetive
+-- sections. Set pos.x to nil to center.
+function bubbletext(text, font, char_width, pos)
+  if pos.x == nil then
+    pos.x = 480/2 - char_width/2*#text
+  end
+  return {
+    t=0,
+    pos=pos,
+    text=text,
+    char_ticks=2,
+    update=function(self)
+      self.t += 1
+      return self.t/self.char_ticks > #self.text
+    end,
+    draw=function(self)
+      local dx,dy = 0,0
+      last_char = flr(self.t/self.char_ticks)
+      for i=1,#self.text do 
+        if i > last_char then
+          break
+        end
+        text_x = self.pos.x+dx
+        text_y = self.pos.y+dy+2*cos((4*i+self.t*2)/80)
+        printbg(font .. self.text[i], text_x, text_y, 7, 0)
+        if self.text[i] == '\n' then
+          dx = 0
+          dy += 7
+        else
+          dx += char_width
+        end
+      end
+    end,
+  }
+end
+
+function printbg(text, x, y, fg, bg)
+  print(text, x-1, y, bg)
+  print(text, x+1, y, bg)
+  print(text, x, y-1, bg)
+  print(text, x, y+1, bg)
+  print(text, x, y, fg)
+end
+
+:: src/title.lua
+local v2 = include("v2.lua")
+local Horse = include("horse.lua")
+
+include("texteffects.lua")
+
+local Title = {}
+
+function Title:new()
+  local o = {}
+  setmetatable(o, self)
+  self.__index = self
+  o.title = bubbletext("derpy derby", "\^w\^t", 10, {x=nil, y=50})
+  o.anykey = bubbletext("press any key!", "", 8, {x=nil, y=170})
+  o.credits = bubbletext("by cj, zep, acedio 2026", "", 5, {x=360, y=250})
+  o.hormse_x = -80
+  o.front_hoof_x = -80
+  o.back_hoof_x = -80
+  o.hormse = Horse:new{pos = v2.v2(o.hormse_x, 140)}
+  o:init()
+  return o
+end
+
+local intro = [[hello, and welcome to the derpy derby!
+press any key to start the race.]]
+
+function Title:init()
+  -- Clear the input buffer in case any text was waiting.
+  readtext(true)
+end
+
+function Title:update()
+  self.title:update()
+  self.anykey:update()
+  self.credits:update()
+  self.hormse_x += 1
+  if self.hormse_x > 540 then
+    self.hormse_x = -80
+    self.hormse = Horse:new{pos = v2.v2(self.hormse_x, 140)}
+  end
+  if self.hormse_x > (flr(self.hormse_x / 20) * 20) then
+    self.hormse:set_front_hoof(self.hormse_x)
+  end
+  if self.hormse_x - 50 > (flr((self.hormse_x - 50) / 20) * 20) then
+    self.hormse:set_back_hoof(self.hormse_x - 50)
+  end
+  self.hormse:update()
+  if peektext() then
+    readtext()
+    return true
+  end
+  return false
+end
+
+function Title:draw()
+  cls()
+  map(0,0)
+  self.hormse:draw()
+  self.title:draw()
+  self.anykey:draw()
+  self.credits:draw()
+end
+
+return Title
 
 :: src/v2.lua
 V2 = {}
@@ -368,9 +546,9 @@ end
 return V2
 
 :: .info.pod
---[[pod,created="2026-05-26 21:14:32",modified="2026-08-16 06:30:07",runtime=27,workspaces={{location="gfx/0.gfx#106",workspace_index=2},{location="map/0.map",workspace_index=3}}]]
+--[[pod,created="2026-05-26 21:14:32",modified="2026-08-16 09:15:17",runtime=27,workspaces={{location="gfx/0.gfx#106",workspace_index=2},{location="map/0.map",workspace_index=3}}]]
 :: gfx/.info.pod
---[[pod,created="2026-05-26 21:14:32",modified="2026-08-16 06:30:07"]]
+--[[pod,created="2026-05-26 21:14:32",modified="2026-08-16 09:15:17"]]
 :: gfx/0.gfx
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI1LTAxLTE3IDEwOjM1OjQ4Iixtb2RpZmllZD0iMjAyNi0w
 OC0xNiAwNjozMDowNyIscmV2aXNpb249NDJdXWx6NABSCAAAdUQAAPEoe1swXT17Ym1wPXB4dQBD
@@ -413,7 +591,7 @@ eXA58GzVAF8kAOQCAP8HIMQgxDC0MLRApFCUYIRwdJBU0BTwAFgAJSH0X_kDAOsDAAQCX3RwNPAM
 TAAlnxTQFNAE4ATwv-QBJw86AP----------------------------------------------jVBt
 PTh9fQ==
 :: map/.info.pod
---[[pod,created="2026-05-26 21:14:32",modified="2026-08-16 06:30:07"]]
+--[[pod,created="2026-05-26 21:14:32",modified="2026-08-16 09:15:17"]]
 :: map/0.map
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI1LTAxLTE3IDEwOjM1OjQ4Iixtb2RpZmllZD0iMjAyNi0w
 OC0xNiAwNjoyOToxNyIscmV2aXNpb249MzNdXWx6NADeAAAAZwEAAPEQe3tibXA9cHh1AEyAICAA
@@ -422,7 +600,7 @@ ABgAEQY-ABQALQARCA8AFBMkABENJAC0HwEAHwUAHQ4AAT4GAB0PDAAPBgAEFEFaABEAWgAYG88A
 AmkAB34ARAADABwhABEgGwD1Df8CAAQsaGlkZGVuPWZhbHNlLHBhbl94PTEuODMBAAEUAHR5PTQ3
 LjE2AQCyNyx0aWxlX2g9MTYKABB3CgCgem9vbT0wLjV9fQ==
 :: sfx/.info.pod
---[[pod,created="2026-05-26 21:14:32",modified="2026-08-16 06:30:07"]]
+--[[pod,created="2026-05-26 21:14:32",modified="2026-08-16 09:15:17"]]
 :: sfx/0.sfx
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI1LTA3LTMxIDA4OjMwOjI4Iixtb2RpZmllZD0iMjAyNS0w
 Ny0zMSAwODozMDoyOCIscmV2aXNpb249MF1dbHo0AKAAAAALCgAA-zBweHUAAygAAAQABA9AEAIO
@@ -430,5 +608,5 @@ AAGgASACoA4ADxAADfDKAQIDQA8PkAQFBgdADJAICQoLQAyQDwwPDQ8ODEAM8P8BAOv-J6oBEAYP
 MBABIAEgAfAAAhACDhABIA8hIAEwD0Dwww8oD--wxg-4Cg--D4AP9w8NAfAJARAGDjAA------_9
 H-8BAKzPyA9AAA8QQP--sPD-AQD-6lD-----KQ==
 :: src/.info.pod
---[[pod,created="2026-08-16 06:38:56",modified="2026-08-16 06:38:56"]]
+--[[pod,created="2026-08-16 09:14:25",modified="2026-08-16 09:15:17"]]
 :: [eoc]

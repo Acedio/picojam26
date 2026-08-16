@@ -1,8 +1,8 @@
 -- Create with this function, then add update() and draw() to the respetive
 -- sections. Set pos.x to nil to center.
-function bubbletext(text, font, pos)
+function bubbletext(text, font, char_width, pos)
   if pos.x == nil then
-    pos.x = 480/2 - 5*#text
+    pos.x = 480/2 - char_width/2*#text
   end
   return {
     t=0,
@@ -27,7 +27,7 @@ function bubbletext(text, font, pos)
           dx = 0
           dy += 7
         else
-          dx += 10
+          dx += char_width
         end
       end
     end,
