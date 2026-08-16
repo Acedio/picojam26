@@ -32,8 +32,8 @@ local bottom_text = lines[stage].bot
 local top_text = lines[stage].top
 local bottom_cursor = 1
 local top_cursor = 1
-local bottom_color = 8
-local top_color = 9
+local bottom_color = 18
+local top_color = 24
 local untyped_color = 3
 -- Accumulate characters across lines.
 local chars_so_far = 0
