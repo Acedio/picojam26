@@ -3,13 +3,13 @@ local Spring = include("spring.lua")
 
 local Horse = {}
 
-Horse.BODY_RECT = v2.v2(64,32)
+Horse.BODY_RECT = v2.v2(90,32)
 Horse.LEG_HEIGHT = 0
 Horse.COLOR = 4
 Horse.SHADOW_COLOR = 20
 Horse.HOOF_COLOR = 2
 Horse.HOOF_SIZE = 8
-Horse.HEAD_OFFSET = v2.v2(40,-30)
+Horse.HEAD_OFFSET = v2.v2(45,-38)
 -- TODO: This should be based on body size.
 Horse.SPLITS_MULTIPLIER = 0.25
 
@@ -69,7 +69,7 @@ function Horse:draw()
   local body_pos = self.body_spring:get_pos()
   ovalfill(body_pos.x - 2, body_pos.y, body_pos.x + Horse.BODY_RECT.x, body_pos.y + Horse.BODY_RECT.y + 2, Horse.SHADOW_COLOR)
   ovalfill(body_pos.x, body_pos.y, body_pos.x + Horse.BODY_RECT.x, body_pos.y + Horse.BODY_RECT.y, Horse.COLOR)
-  p8spr(0x0015, 3, 3, self.head_spring:get_pos().x, self.head_spring:get_pos().y)
+  p8spr(64, 5, 4, self.head_spring:get_pos().x, self.head_spring:get_pos().y)
 end
 
 function Horse:update()
