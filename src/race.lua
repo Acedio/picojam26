@@ -85,10 +85,12 @@ function Race:update()
     if sub(self.top_text, self.top_cursor, true) == char and self.top_cursor - self.bottom_cursor < 6 then
       self.top_cursor = self.top_cursor + 1
       self.hormse:set_front_hoof((self.chars_so_far + self.top_cursor) * Race.CHAR_WIDTH_PX)
+      self.hormse:bump_front_hoof()
     end
     if sub(self.bottom_text, self.bottom_cursor, true) == char and self.bottom_cursor < self.top_cursor then
       self.bottom_cursor = self.bottom_cursor + 1
       self.hormse:set_back_hoof((self.chars_so_far + self.bottom_cursor) * Race.CHAR_WIDTH_PX)
+      self.hormse:bump_back_hoof()
     end
   end
 

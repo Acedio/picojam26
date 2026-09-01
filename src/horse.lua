@@ -4,7 +4,11 @@ local Spring = include("spring.lua")
 local Horse = {}
 
 Horse.BODY_RECT = v2.v2(90,32)
-Horse.LEG_HEIGHT = 0
+Horse.BACK_LEG_OFFSET = v2.v2(10,24)
+Horse.FRONT_LEG_OFFSET = v2.v2(80,24)
+Horse.SHOE_OFFSET = v2.v2(5,6)
+Horse.LEG_HEIGHT = 20
+Horse.LEG_WIDTH = 7
 Horse.COLOR = 4
 Horse.SHADOW_COLOR = 20
 Horse.HOOF_COLOR = 2
@@ -19,7 +23,7 @@ function Horse:new(o)
   setmetatable(o, self)
   self.__index = self
 
-  o.backhoof_pos = o.pos + v2.v2(0, Horse.BODY_RECT.y + Horse.LEG_HEIGHT)
+  o.backhoof_pos = o.pos + Horse.BACK_LEG_OFFSET + v2.v2(0,Horse.LEG_HEIGHT)
   o.backhoof_spring = Spring:new{
     pos = o.backhoof_pos,
     vel = v2.v2(0,0),
@@ -27,7 +31,7 @@ function Horse:new(o)
     strength = 0.1,
     target = o.backhoof_pos,
   }
-  o.fronthoof_pos = o.pos + Horse.BODY_RECT + v2.v2(0, Horse.LEG_HEIGHT)
+  o.fronthoof_pos = o.pos + Horse.FRONT_LEG_OFFSET + v2.v2(0,Horse.LEG_HEIGHT)
   o.fronthoof_spring = Spring:new{
     pos = o.fronthoof_pos,
     vel = v2.v2(0,0),
@@ -72,14 +76,34 @@ function p8spr(s, w, h, dx, dy)
   end
 end
 
+function Horse:drawFrontLeg()
+  local hip = self.body_spring:get_pos() + Horse.FRONT_LEG_OFFSET
+  local hoof = self.fronthoof_spring:get_pos() + v2.v2(4,0) + Horse.SHOE_OFFSET
+  for i=0,Horse.LEG_WIDTH do
+    line(hip.x+i, hip.y, hoof.x+i, hoof.y, 4)
+    line(hip.x+i, hip.y-1, hoof.x+i, hoof.y-1, 4)
+  end
+end
+
+function Horse:drawBackLeg()
+  local hip = self.body_spring:get_pos() + Horse.BACK_LEG_OFFSET
+  local hoof = self.backhoof_spring:get_pos() + v2.v2(-4,0) + Horse.SHOE_OFFSET
+  for i=0,Horse.LEG_WIDTH do
+    line(hip.x+i, hip.y, hoof.x+i, hoof.y, 4)
+    line(hip.x+i, hip.y-1, hoof.x+i, hoof.y-1, 4)
+  end
+end
+
 function Horse:draw()
-  p8spr(0x1a, 3, 2, self.backhoof_spring:get_pos().x - 2, self.backhoof_spring:get_pos().y)
+  self:drawBackLeg()
+  p8spr(0x1a, 3, 2, self.backhoof_spring:get_pos().x - 4, self.backhoof_spring:get_pos().y)
   p8spr(69, 3, 4, self.tail_spring:get_pos().x, self.tail_spring:get_pos().y)
   local body_pos = self.body_spring:get_pos()
   ovalfill(body_pos.x - 2, body_pos.y, body_pos.x + Horse.BODY_RECT.x, body_pos.y + Horse.BODY_RECT.y + 2, Horse.SHADOW_COLOR)
   ovalfill(body_pos.x, body_pos.y, body_pos.x + Horse.BODY_RECT.x, body_pos.y + Horse.BODY_RECT.y, Horse.COLOR)
   p8spr(64, 5, 4, self.head_spring:get_pos().x, self.head_spring:get_pos().y)
-  p8spr(0x30, 3, 2, self.fronthoof_spring:get_pos().x + 2, self.fronthoof_spring:get_pos().y)
+  self:drawFrontLeg()
+  p8spr(0x30, 3, 2, self.fronthoof_spring:get_pos().x + 4, self.fronthoof_spring:get_pos().y)
 end
 
 function Horse:update()
@@ -101,11 +125,17 @@ end
 
 function Horse:set_back_hoof(new_x)
   self.backhoof_pos.x = new_x
+end
+
+function Horse:bump_back_hoof()
   self.backhoof_spring:perturb(v2.v2(0, -5))
 end
 
 function Horse:set_front_hoof(new_x)
   self.fronthoof_pos.x = new_x
+end
+
+function Horse:bump_front_hoof()
   self.fronthoof_spring:perturb(v2.v2(0, -5))
 end
 
