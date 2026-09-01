@@ -180,16 +180,16 @@ function Horse:set_back_hoof(new_x)
   self.backhoof_pos.x = new_x
 end
 
-function Horse:bump_back_hoof()
-  self.backhoof_spring:perturb(v2.v2(0, -5))
+function Horse:bump_back_hoof(amt)
+  self.backhoof_spring:perturb(v2.v2(0, -amt))
 end
 
 function Horse:set_front_hoof(new_x)
   self.fronthoof_pos.x = new_x
 end
 
-function Horse:bump_front_hoof()
-  self.fronthoof_spring:perturb(v2.v2(0, -5))
+function Horse:bump_front_hoof(amt)
+  self.fronthoof_spring:perturb(v2.v2(0, -amt))
 end
 
 return Horse

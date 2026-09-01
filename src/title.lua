@@ -3,7 +3,9 @@ local Horse = include("horse.lua")
 
 include("texteffects.lua")
 
-local Title = {}
+local Title = {
+  HORMSE_START_X = -130,
+}
 
 function Title:new()
   local o = {}
@@ -12,9 +14,7 @@ function Title:new()
   o.title = bubbletext("derpy derby", "\^w\^t", 10, {x=nil, y=50})
   o.anykey = bubbletext("press any key!", "", 8, {x=nil, y=170})
   o.credits = bubbletext("by illuminesce, zep, acedio 2026", "", 5, {x=314, y=250})
-  o.hormse_x = -80
-  o.front_hoof_x = -80
-  o.back_hoof_x = -80
+  o.hormse_x = Title.HORMSE_START_X
   o.hormse = Horse:new{pos = v2.v2(o.hormse_x, 140)}
   o:init()
   return o
@@ -32,16 +32,18 @@ function Title:update()
   self.title:update()
   self.anykey:update()
   self.credits:update()
-  self.hormse_x += 1
-  if self.hormse_x > 540 then
-    self.hormse_x = -80
+  self.hormse_x += 0.5
+  if self.hormse_x > 640 then
+    self.hormse_x = Title.HORMSE_START_X
     self.hormse = Horse:new{pos = v2.v2(self.hormse_x, 140)}
   end
-  if self.hormse_x > (flr(self.hormse_x / 20) * 20) then
-    self.hormse:set_front_hoof(self.hormse_x)
+  if self.hormse_x + 50 > ((flr(self.hormse.fronthoof_pos.x / 11) + 1) * 11) then
+    self.hormse:set_front_hoof(self.hormse_x + 50)
+    self.hormse:bump_front_hoof(3)
   end
-  if self.hormse_x - 50 > (flr((self.hormse_x - 50) / 20) * 20) then
-    self.hormse:set_back_hoof(self.hormse_x - 50)
+  if self.hormse_x > ((flr(self.hormse.backhoof_pos.x / 13) + 1) * 13) then
+    self.hormse:set_back_hoof(self.hormse_x)
+    self.hormse:bump_back_hoof(3)
   end
   self.hormse:update()
   if peektext() then
