@@ -23,6 +23,15 @@ function Horse:new(o)
   setmetatable(o, self)
   self.__index = self
 
+  o.body_spring = Spring:new{
+    pos = o.pos,
+    vel = v2.v2(0,0),
+    damp = 0.9,
+    strength = 0.1,
+    target = o.pos,
+  }
+  o.body_spring:update()
+
   o.backhoof_pos = o.pos + Horse.BACK_LEG_OFFSET + v2.v2(0,Horse.LEG_HEIGHT)
   o.backhoof_spring = Spring:new{
     pos = o.backhoof_pos,
@@ -30,6 +39,13 @@ function Horse:new(o)
     damp = 0.8,
     strength = 0.1,
     target = o.backhoof_pos,
+  }
+  o.backknee_spring = Spring:new{
+    pos = o:backKneeTarget(),
+    vel = v2.v2(0,0),
+    damp = 0.7,
+    strength = 0.2,
+    target = o:backKneeTarget(),
   }
   o.fronthoof_pos = o.pos + Horse.FRONT_LEG_OFFSET + v2.v2(0,Horse.LEG_HEIGHT)
   o.fronthoof_spring = Spring:new{
@@ -39,15 +55,13 @@ function Horse:new(o)
     strength = 0.1,
     target = o.fronthoof_pos,
   }
-
-  o.body_spring = Spring:new{
-    pos = o.pos,
+  o.frontknee_spring = Spring:new{
+    pos = o:frontKneeTarget(),
     vel = v2.v2(0,0),
-    damp = 0.9,
-    strength = 0.1,
-    target = o.pos,
+    damp = 0.7,
+    strength = 0.2,
+    target = o:frontKneeTarget(),
   }
-  o.body_spring:update()
   local head_pos = o.body_spring:get_pos() + Horse.HEAD_OFFSET
   o.head_spring = Spring:new{
     pos = head_pos,
@@ -76,21 +90,55 @@ function p8spr(s, w, h, dx, dy)
   end
 end
 
+function Horse:frontLegJoint()
+  return self.body_spring:get_pos() + Horse.FRONT_LEG_OFFSET
+end
+
+function Horse:frontHoofJoint()
+  return self.fronthoof_spring:get_pos() + v2.v2(4,0) + Horse.SHOE_OFFSET
+end
+
+function Horse:frontKneeTarget()
+  return (self:frontLegJoint() + self:frontHoofJoint()) / 2 + v2.v2(4,0)
+end
+
 function Horse:drawFrontLeg()
-  local hip = self.body_spring:get_pos() + Horse.FRONT_LEG_OFFSET
-  local hoof = self.fronthoof_spring:get_pos() + v2.v2(4,0) + Horse.SHOE_OFFSET
+  local hip = self:frontLegJoint()
+  local knee = self.frontknee_spring:get_pos()
+  local hoof = self:frontHoofJoint()
   for i=0,Horse.LEG_WIDTH do
-    line(hip.x+i, hip.y, hoof.x+i, hoof.y, 4)
-    line(hip.x+i, hip.y-1, hoof.x+i, hoof.y-1, 4)
+    line(hip.x+i, hip.y, knee.x+i, knee.y, 4)
+    line(hip.x+i, hip.y-1, knee.x+i, knee.y-1, 4)
+  end
+  for i=0,Horse.LEG_WIDTH do
+    line(knee.x+i, knee.y, hoof.x+i, hoof.y, 4)
+    line(knee.x+i, knee.y-1, hoof.x+i, hoof.y-1, 4)
   end
 end
 
+function Horse:backLegJoint()
+  return self.body_spring:get_pos() + Horse.BACK_LEG_OFFSET
+end
+
+function Horse:backHoofJoint()
+  return self.backhoof_spring:get_pos() + v2.v2(-4,0) + Horse.SHOE_OFFSET
+end
+
+function Horse:backKneeTarget()
+  return (self:backLegJoint() + self:backHoofJoint()) / 2 + v2.v2(-7,0)
+end
+
 function Horse:drawBackLeg()
-  local hip = self.body_spring:get_pos() + Horse.BACK_LEG_OFFSET
-  local hoof = self.backhoof_spring:get_pos() + v2.v2(-4,0) + Horse.SHOE_OFFSET
+  local hip = self:backLegJoint()
+  local knee = self.backknee_spring:get_pos()
+  local hoof = self:backHoofJoint()
   for i=0,Horse.LEG_WIDTH do
-    line(hip.x+i, hip.y, hoof.x+i, hoof.y, 4)
-    line(hip.x+i, hip.y-1, hoof.x+i, hoof.y-1, 4)
+    line(hip.x+i, hip.y, knee.x+i, knee.y, 4)
+    line(hip.x+i, hip.y-1, knee.x+i, knee.y-1, 4)
+  end
+  for i=0,Horse.LEG_WIDTH do
+    line(knee.x+i, knee.y, hoof.x+i, hoof.y, 4)
+    line(knee.x+i, knee.y-1, hoof.x+i, hoof.y-1, 4)
   end
 end
 
@@ -121,6 +169,11 @@ function Horse:update()
   self.fronthoof_spring:update()
   self.backhoof_spring:set_target(self.backhoof_pos)
   self.backhoof_spring:update()
+
+  self.frontknee_spring:set_target(self:frontKneeTarget())
+  self.frontknee_spring:update()
+  self.backknee_spring:set_target(self:backKneeTarget())
+  self.backknee_spring:update()
 end
 
 function Horse:set_back_hoof(new_x)
