@@ -56,7 +56,11 @@ local Spring = include("spring.lua")
 local Horse = {}
 
 Horse.BODY_RECT = v2.v2(90,32)
-Horse.LEG_HEIGHT = 0
+Horse.BACK_LEG_OFFSET = v2.v2(10,24)
+Horse.FRONT_LEG_OFFSET = v2.v2(80,24)
+Horse.SHOE_OFFSET = v2.v2(5,6)
+Horse.LEG_HEIGHT = 20
+Horse.LEG_WIDTH = 7
 Horse.COLOR = 4
 Horse.SHADOW_COLOR = 20
 Horse.HOOF_COLOR = 2
@@ -71,23 +75,6 @@ function Horse:new(o)
   setmetatable(o, self)
   self.__index = self
 
-  o.backhoof_pos = o.pos + v2.v2(0, Horse.BODY_RECT.y + Horse.LEG_HEIGHT)
-  o.backhoof_spring = Spring:new{
-    pos = o.backhoof_pos,
-    vel = v2.v2(0,0),
-    damp = 0.8,
-    strength = 0.1,
-    target = o.backhoof_pos,
-  }
-  o.fronthoof_pos = o.pos + Horse.BODY_RECT + v2.v2(0, Horse.LEG_HEIGHT)
-  o.fronthoof_spring = Spring:new{
-    pos = o.fronthoof_pos,
-    vel = v2.v2(0,0),
-    damp = 0.8,
-    strength = 0.1,
-    target = o.fronthoof_pos,
-  }
-
   o.body_spring = Spring:new{
     pos = o.pos,
     vel = v2.v2(0,0),
@@ -96,6 +83,37 @@ function Horse:new(o)
     target = o.pos,
   }
   o.body_spring:update()
+
+  o.backhoof_pos = o.pos + Horse.BACK_LEG_OFFSET + v2.v2(0,Horse.LEG_HEIGHT)
+  o.backhoof_spring = Spring:new{
+    pos = o.backhoof_pos,
+    vel = v2.v2(0,0),
+    damp = 0.8,
+    strength = 0.1,
+    target = o.backhoof_pos,
+  }
+  o.backknee_spring = Spring:new{
+    pos = o:backKneeTarget(),
+    vel = v2.v2(0,0),
+    damp = 0.7,
+    strength = 0.2,
+    target = o:backKneeTarget(),
+  }
+  o.fronthoof_pos = o.pos + Horse.FRONT_LEG_OFFSET + v2.v2(0,Horse.LEG_HEIGHT)
+  o.fronthoof_spring = Spring:new{
+    pos = o.fronthoof_pos,
+    vel = v2.v2(0,0),
+    damp = 0.8,
+    strength = 0.1,
+    target = o.fronthoof_pos,
+  }
+  o.frontknee_spring = Spring:new{
+    pos = o:frontKneeTarget(),
+    vel = v2.v2(0,0),
+    damp = 0.7,
+    strength = 0.2,
+    target = o:frontKneeTarget(),
+  }
   local head_pos = o.body_spring:get_pos() + Horse.HEAD_OFFSET
   o.head_spring = Spring:new{
     pos = head_pos,
@@ -124,14 +142,68 @@ function p8spr(s, w, h, dx, dy)
   end
 end
 
+function Horse:frontLegJoint()
+  return self.body_spring:get_pos() + Horse.FRONT_LEG_OFFSET
+end
+
+function Horse:frontHoofJoint()
+  return self.fronthoof_spring:get_pos() + v2.v2(4,0) + Horse.SHOE_OFFSET
+end
+
+function Horse:frontKneeTarget()
+  return (self:frontLegJoint() + self:frontHoofJoint()) / 2 + v2.v2(4,0)
+end
+
+function Horse:drawFrontLeg()
+  local hip = self:frontLegJoint()
+  local knee = self.frontknee_spring:get_pos()
+  local hoof = self:frontHoofJoint()
+  for i=0,Horse.LEG_WIDTH do
+    line(hip.x+i, hip.y, knee.x+i, knee.y, 4)
+    line(hip.x+i, hip.y-1, knee.x+i, knee.y-1, 4)
+  end
+  for i=0,Horse.LEG_WIDTH do
+    line(knee.x+i, knee.y, hoof.x+i, hoof.y, 4)
+    line(knee.x+i, knee.y-1, hoof.x+i, hoof.y-1, 4)
+  end
+end
+
+function Horse:backLegJoint()
+  return self.body_spring:get_pos() + Horse.BACK_LEG_OFFSET
+end
+
+function Horse:backHoofJoint()
+  return self.backhoof_spring:get_pos() + v2.v2(-4,0) + Horse.SHOE_OFFSET
+end
+
+function Horse:backKneeTarget()
+  return (self:backLegJoint() + self:backHoofJoint()) / 2 + v2.v2(-7,0)
+end
+
+function Horse:drawBackLeg()
+  local hip = self:backLegJoint()
+  local knee = self.backknee_spring:get_pos()
+  local hoof = self:backHoofJoint()
+  for i=0,Horse.LEG_WIDTH do
+    line(hip.x+i, hip.y, knee.x+i, knee.y, 4)
+    line(hip.x+i, hip.y-1, knee.x+i, knee.y-1, 4)
+  end
+  for i=0,Horse.LEG_WIDTH do
+    line(knee.x+i, knee.y, hoof.x+i, hoof.y, 4)
+    line(knee.x+i, knee.y-1, hoof.x+i, hoof.y-1, 4)
+  end
+end
+
 function Horse:draw()
-  p8spr(0x1a, 3, 2, self.backhoof_spring:get_pos().x - 2, self.backhoof_spring:get_pos().y)
   p8spr(69, 3, 4, self.tail_spring:get_pos().x, self.tail_spring:get_pos().y)
   local body_pos = self.body_spring:get_pos()
   ovalfill(body_pos.x - 2, body_pos.y, body_pos.x + Horse.BODY_RECT.x, body_pos.y + Horse.BODY_RECT.y + 2, Horse.SHADOW_COLOR)
   ovalfill(body_pos.x, body_pos.y, body_pos.x + Horse.BODY_RECT.x, body_pos.y + Horse.BODY_RECT.y, Horse.COLOR)
   p8spr(64, 5, 4, self.head_spring:get_pos().x, self.head_spring:get_pos().y)
-  p8spr(0x30, 3, 2, self.fronthoof_spring:get_pos().x + 2, self.fronthoof_spring:get_pos().y)
+  self:drawBackLeg()
+  p8spr(0x1a, 3, 2, self.backhoof_spring:get_pos().x - 4, self.backhoof_spring:get_pos().y)
+  self:drawFrontLeg()
+  p8spr(0x30, 3, 2, self.fronthoof_spring:get_pos().x + 4, self.fronthoof_spring:get_pos().y)
 end
 
 function Horse:update()
@@ -149,16 +221,27 @@ function Horse:update()
   self.fronthoof_spring:update()
   self.backhoof_spring:set_target(self.backhoof_pos)
   self.backhoof_spring:update()
+
+  self.frontknee_spring:set_target(self:frontKneeTarget())
+  self.frontknee_spring:update()
+  self.backknee_spring:set_target(self:backKneeTarget())
+  self.backknee_spring:update()
 end
 
 function Horse:set_back_hoof(new_x)
   self.backhoof_pos.x = new_x
-  self.backhoof_spring:perturb(v2.v2(0, -5))
+end
+
+function Horse:bump_back_hoof(amt)
+  self.backhoof_spring:perturb(v2.v2(0, -amt))
 end
 
 function Horse:set_front_hoof(new_x)
   self.fronthoof_pos.x = new_x
-  self.fronthoof_spring:perturb(v2.v2(0, -5))
+end
+
+function Horse:bump_front_hoof(amt)
+  self.fronthoof_spring:perturb(v2.v2(0, -amt))
 end
 
 return Horse
@@ -251,10 +334,12 @@ function Race:update()
     if sub(self.top_text, self.top_cursor, true) == char and self.top_cursor - self.bottom_cursor < 6 then
       self.top_cursor = self.top_cursor + 1
       self.hormse:set_front_hoof((self.chars_so_far + self.top_cursor) * Race.CHAR_WIDTH_PX)
+      self.hormse:bump_front_hoof(5)
     end
     if sub(self.bottom_text, self.bottom_cursor, true) == char and self.bottom_cursor < self.top_cursor then
       self.bottom_cursor = self.bottom_cursor + 1
       self.hormse:set_back_hoof((self.chars_so_far + self.bottom_cursor) * Race.CHAR_WIDTH_PX)
+      self.hormse:bump_back_hoof(5)
     end
   end
 
@@ -409,7 +494,9 @@ local Horse = include("horse.lua")
 
 include("texteffects.lua")
 
-local Title = {}
+local Title = {
+  HORMSE_START_X = -130,
+}
 
 function Title:new()
   local o = {}
@@ -418,9 +505,7 @@ function Title:new()
   o.title = bubbletext("derpy derby", "\^w\^t", 10, {x=nil, y=50})
   o.anykey = bubbletext("press any key!", "", 8, {x=nil, y=170})
   o.credits = bubbletext("by illuminesce, zep, acedio 2026", "", 5, {x=314, y=250})
-  o.hormse_x = -80
-  o.front_hoof_x = -80
-  o.back_hoof_x = -80
+  o.hormse_x = Title.HORMSE_START_X
   o.hormse = Horse:new{pos = v2.v2(o.hormse_x, 140)}
   o:init()
   return o
@@ -438,16 +523,18 @@ function Title:update()
   self.title:update()
   self.anykey:update()
   self.credits:update()
-  self.hormse_x += 1
-  if self.hormse_x > 540 then
-    self.hormse_x = -80
+  self.hormse_x += 0.5
+  if self.hormse_x > 640 then
+    self.hormse_x = Title.HORMSE_START_X
     self.hormse = Horse:new{pos = v2.v2(self.hormse_x, 140)}
   end
-  if self.hormse_x > (flr(self.hormse_x / 20) * 20) then
-    self.hormse:set_front_hoof(self.hormse_x)
+  if self.hormse_x + 50 > ((flr(self.hormse.fronthoof_pos.x / 11) + 1) * 11) then
+    self.hormse:set_front_hoof(self.hormse_x + 50)
+    self.hormse:bump_front_hoof(3)
   end
-  if self.hormse_x - 50 > (flr((self.hormse_x - 50) / 20) * 20) then
-    self.hormse:set_back_hoof(self.hormse_x - 50)
+  if self.hormse_x > ((flr(self.hormse.backhoof_pos.x / 13) + 1) * 13) then
+    self.hormse:set_back_hoof(self.hormse_x)
+    self.hormse:bump_back_hoof(3)
   end
   self.hormse:update()
   if peektext() then
@@ -640,7 +727,7 @@ AAGgASACoA4ADxAADfDKAQIDQA8PkAQFBgdADJAICQoLQAyQDwwPDQ8ODEAM8P8BAOv-J6oBEAYP
 MBABIAEgAfAAAhACDhABIA8hIAEwD0Dwww8oD--wxg-4Cg--D4AP9w8NAfAJARAGDjAA------_9
 H-8BAKzPyA9AAA8QQP--sPD-AQD-6lD-----KQ==
 :: src/.info.pod
---[[pod,created="2026-09-01 10:37:08",modified="2026-09-01 13:10:48"]]
+--[[pod,created="2026-09-03 14:14:22",modified="2026-09-03 14:14:22"]]
 :: src/mfh.sfx
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI2LTA4LTE2IDAxOjU2OjI0Iixtb2RpZmllZD0iMjAyNi0w
 OC0xNiAwOTo0MDoyNyIscmV2aXNpb249NzBdXWx6NAC-BQAAPRAAAPEfcHh1AAMoAAAEAAQPQBAC

@@ -1,5 +1,6 @@
 local v2 = include("v2.lua")
 local Spring = include("spring.lua")
+local p8 = include("p8.lua")
 
 local Horse = {}
 
@@ -82,14 +83,6 @@ function Horse:new(o)
   return o
 end
 
-function p8spr(s, w, h, dx, dy)
-  for xi=0,w-1 do
-    for yi=0,h-1 do
-      sspr(s + yi * 8 + xi, 0, 0, 16, 16, dx + xi * 16, dy + yi * 16)
-    end
-  end
-end
-
 function Horse:frontLegJoint()
   return self.body_spring:get_pos() + Horse.FRONT_LEG_OFFSET
 end
@@ -143,15 +136,15 @@ function Horse:drawBackLeg()
 end
 
 function Horse:draw()
-  self:drawBackLeg()
-  p8spr(0x1a, 3, 2, self.backhoof_spring:get_pos().x - 4, self.backhoof_spring:get_pos().y)
-  p8spr(69, 3, 4, self.tail_spring:get_pos().x, self.tail_spring:get_pos().y)
+  p8.p8spr(69, 3, 4, self.tail_spring:get_pos().x, self.tail_spring:get_pos().y)
   local body_pos = self.body_spring:get_pos()
   ovalfill(body_pos.x - 2, body_pos.y, body_pos.x + Horse.BODY_RECT.x, body_pos.y + Horse.BODY_RECT.y + 2, Horse.SHADOW_COLOR)
   ovalfill(body_pos.x, body_pos.y, body_pos.x + Horse.BODY_RECT.x, body_pos.y + Horse.BODY_RECT.y, Horse.COLOR)
-  p8spr(64, 5, 4, self.head_spring:get_pos().x, self.head_spring:get_pos().y)
+  p8.p8spr(64, 5, 4, self.head_spring:get_pos().x, self.head_spring:get_pos().y)
+  self:drawBackLeg()
+  p8.p8spr(0x1a, 3, 2, self.backhoof_spring:get_pos().x - 4, self.backhoof_spring:get_pos().y)
   self:drawFrontLeg()
-  p8spr(0x30, 3, 2, self.fronthoof_spring:get_pos().x + 4, self.fronthoof_spring:get_pos().y)
+  p8.p8spr(0x30, 3, 2, self.fronthoof_spring:get_pos().x + 4, self.fronthoof_spring:get_pos().y)
 end
 
 function Horse:update()

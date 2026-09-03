@@ -1,5 +1,32 @@
 local Horse = include("horse.lua")
 local v2 = include("v2.lua")
+local p8 = include("p8.lua")
+
+-- cps = characters per second
+function make_opponent(y, cps, body, hair, shadow, saddle, trim)
+  return {
+    y = y,
+    cps = cps,
+    body = body,
+    hair = hair,
+    shadow = shadow,
+    saddle = saddle,
+    trim = trim,
+  }
+end
+
+-- x, y in map space, not screen space
+function draw_opponent(opp, x, y)
+  pal(6, opp.body)
+  pal(7, opp.hair)
+  pal(22, opp.shadow)
+  pal(16, opp.saddle)
+  pal(1, opp.trim)
+
+  p8.p8spr(104, 5, 3, x, y)
+
+  pal()
+end
 
 local Race = {
   TRACK_X_INTERPOLATE_FRAMES = 20,
@@ -10,6 +37,8 @@ local Race = {
 
   SCREEN_WIDTH = 480,
   CHAR_WIDTH_PX = 10,
+
+  FRAMES_PER_SECOND = 60,
 
   LINES = {
     {
@@ -48,6 +77,12 @@ function Race:new()
     track_x = 0,
     track_x_interpolate_from = 0,
     track_x_interpolate_t = 100,
+    opponents = {
+      make_opponent(97, 1.5, 16, 17,  1,  9, 25),
+      make_opponent(112, 2.5, 20, 31, 21, 23, 14),
+      make_opponent(135, 3,  6,  7, 22, 16, 1),
+    },
+    frame = 0,
   }
   setmetatable(o, self)
   self.__index = self
@@ -80,6 +115,8 @@ function Race:next_stage()
 end
 
 function Race:update()
+  self.frame += 1
+
   if peektext() then
     local char = readtext()
     if sub(self.top_text, self.top_cursor, true) == char and self.top_cursor - self.bottom_cursor < 6 then
@@ -140,6 +177,14 @@ function draw_line(text, cursor, x, y, typed_col, untyped_col)
   draw_cursor(cursor, x, y, typed_col)
 end
 
+function Race:draw_opponents()
+  for i=1,#self.opponents do
+    local opp = self.opponents[i]
+    local x = (Race.CHAR_WIDTH_PX * opp.cps ) * self.frame / Race.FRAMES_PER_SECOND
+    draw_opponent(opp, x + abs(5*sin(self.frame/30)), opp.y - abs(5*sin(self.frame/30)))
+  end
+end
+
 function Race:draw()
   cls()
   local left_x = self.track_x
@@ -148,6 +193,7 @@ function Race:draw()
   end
   camera(left_x,0)
   self:draw_course(left_x)
+  self:draw_opponents()
   self.hormse:draw()
   camera(0,0)
   draw_line(self.top_text, self.top_cursor, 10, 232, Race.TOP_COLOR, Race.UNTYPED_COLOR)
