@@ -11,9 +11,9 @@ function Title:new()
   local o = {}
   setmetatable(o, self)
   self.__index = self
-  o.title = bubbletext("derpy derby", "\^w\^t", 10, {x=nil, y=50})
-  o.anykey = bubbletext("press any key!", "", 8, {x=nil, y=170})
-  o.credits = bubbletext("by illuminesce, zep, acedio 2026", "", 5, {x=314, y=250})
+  o.title = bubbletext("derpy derby", "\^w\^t", 10)
+  o.anykey = bubbletext("press any key!", "", 8)
+  o.credits = bubbletext("by illuminesce, zep, acedio 2026", "", 5)
   o.hormse_x = Title.HORMSE_START_X
   o.hormse = Horse:new{pos = v2.v2(o.hormse_x, 140)}
   o:init()
@@ -57,9 +57,9 @@ function Title:draw()
   cls()
   map(0,0)
   self.hormse:draw()
-  self.title:draw()
-  self.anykey:draw()
-  self.credits:draw()
+  self.title:draw(v2.v2(nil, 50))
+  self.anykey:draw(v2.v2(nil, 170))
+  self.credits:draw(v2.v2(314, 250))
 end
 
 return Title
