@@ -17,9 +17,75 @@ print(pwd())
 cp("/picojam26/src", "src")
 cd("src")
 include("game.lua")
+:: src/end.lua
+local v2 = include("v2.lua")
+local p8 = include("p8.lua")
+
+local End = {
+  FRAMES_PER_SECOND = 60,
+  SCREEN_WIDTH = 480,
+}
+
+local function opp_horse(num)
+  return {
+    sprite = 152 + num * 2,
+  }
+end
+
+local function hormse()
+  return {
+    sprite = 158,
+  }
+end
+
+function End:new(hormse_frames, opp_frames)
+  local o = {
+    frame = 0,
+    podium_horses = {opp_horse(1), opp_horse(2), hormse()},
+  }
+  setmetatable(o, self)
+  self.__index = self
+
+  o:init()
+  return o
+end
+
+function End:init()
+  fetch("/system/fonts/lil_mono.font"):poke(0x4000)
+end
+
+function End:update()
+  self.frame += 1
+  return false
+end
+
+function End:draw_course(left_x)
+end
+
+function serp(t)
+  return (1 + sin(0.25 + 0.5*t))/2
+end
+
+function End:draw()
+  camera(0,0)
+  cls()
+  map(0,0,0,0)
+  local podium_x = (End.SCREEN_WIDTH - 6 * 16) / 2
+  local podium_y = 110
+  p8.p8spr(128, 6, 3, podium_x, podium_y)
+  p8.p8spr(self.podium_horses[1].sprite, 2, 2, podium_x + 2 * 16, podium_y - 25)
+  p8.p8spr(self.podium_horses[2].sprite, 2, 2, podium_x         , podium_y - 15)
+  p8.p8spr(self.podium_horses[3].sprite, 2, 2, podium_x + 4 * 16, podium_y - 4)
+  -- Extra 1st podium section to cover 3rd.
+  p8.p8spr(134, 1, 3, podium_x + 16 * 4, podium_y)
+end
+
+return End
+
 :: src/game.lua
 local Race = include("race.lua")
 local Title = include("title.lua")
+local End = include("end.lua")
 
 local States = {
   TITLE = 1,
@@ -40,6 +106,9 @@ function _update()
     state = States.RACE
     current = Race:new()
   elseif state == States.RACE and ret then
+    state = States.END
+    current = End:new(10, {1,2,3})
+  elseif state == States.END and ret then
     state = States.TITLE
     current = Title:new()
   end
@@ -52,6 +121,7 @@ end
 :: src/horse.lua
 local v2 = include("v2.lua")
 local Spring = include("spring.lua")
+local p8 = include("p8.lua")
 
 local Horse = {}
 
@@ -134,14 +204,6 @@ function Horse:new(o)
   return o
 end
 
-function p8spr(s, w, h, dx, dy)
-  for xi=0,w-1 do
-    for yi=0,h-1 do
-      sspr(s + yi * 8 + xi, 0, 0, 16, 16, dx + xi * 16, dy + yi * 16)
-    end
-  end
-end
-
 function Horse:frontLegJoint()
   return self.body_spring:get_pos() + Horse.FRONT_LEG_OFFSET
 end
@@ -154,17 +216,17 @@ function Horse:frontKneeTarget()
   return (self:frontLegJoint() + self:frontHoofJoint()) / 2 + v2.v2(4,0)
 end
 
-function Horse:drawFrontLeg()
-  local hip = self:frontLegJoint()
-  local knee = self.frontknee_spring:get_pos()
-  local hoof = self:frontHoofJoint()
+function Horse:drawFrontLeg(offset, color)
+  local hip = self:frontLegJoint() + offset
+  local knee = self.frontknee_spring:get_pos() + offset
+  local hoof = self:frontHoofJoint() + offset
   for i=0,Horse.LEG_WIDTH do
-    line(hip.x+i, hip.y, knee.x+i, knee.y, 4)
-    line(hip.x+i, hip.y-1, knee.x+i, knee.y-1, 4)
+    line(hip.x+i, hip.y, knee.x+i, knee.y, color)
+    line(hip.x+i, hip.y-1, knee.x+i, knee.y-1, color)
   end
   for i=0,Horse.LEG_WIDTH do
-    line(knee.x+i, knee.y, hoof.x+i, hoof.y, 4)
-    line(knee.x+i, knee.y-1, hoof.x+i, hoof.y-1, 4)
+    line(knee.x+i, knee.y, hoof.x+i, hoof.y, color)
+    line(knee.x+i, knee.y-1, hoof.x+i, hoof.y-1, color)
   end
 end
 
@@ -180,30 +242,38 @@ function Horse:backKneeTarget()
   return (self:backLegJoint() + self:backHoofJoint()) / 2 + v2.v2(-7,0)
 end
 
-function Horse:drawBackLeg()
-  local hip = self:backLegJoint()
-  local knee = self.backknee_spring:get_pos()
-  local hoof = self:backHoofJoint()
+function Horse:drawBackLeg(offset, color)
+  local hip = self:backLegJoint() + offset
+  local knee = self.backknee_spring:get_pos() + offset
+  local hoof = self:backHoofJoint() + offset
   for i=0,Horse.LEG_WIDTH do
-    line(hip.x+i, hip.y, knee.x+i, knee.y, 4)
-    line(hip.x+i, hip.y-1, knee.x+i, knee.y-1, 4)
+    line(hip.x+i, hip.y, knee.x+i, knee.y, color)
+    line(hip.x+i, hip.y-1, knee.x+i, knee.y-1, color)
   end
   for i=0,Horse.LEG_WIDTH do
-    line(knee.x+i, knee.y, hoof.x+i, hoof.y, 4)
-    line(knee.x+i, knee.y-1, hoof.x+i, hoof.y-1, 4)
+    line(knee.x+i, knee.y, hoof.x+i, hoof.y, color)
+    line(knee.x+i, knee.y-1, hoof.x+i, hoof.y-1, color)
   end
 end
 
 function Horse:draw()
-  p8spr(69, 3, 4, self.tail_spring:get_pos().x, self.tail_spring:get_pos().y)
+  -- Background feet
+  self:drawBackLeg(v2.v2(4,-4), 20)
+  p8.p8spr(43, 3, 2, self.backhoof_spring:get_pos().x, self.backhoof_spring:get_pos().y - 4)
+  self:drawFrontLeg(v2.v2(-4,-4), 20)
+  p8.p8spr(48, 3, 2, self.fronthoof_spring:get_pos().x, self.fronthoof_spring:get_pos().y - 4)
+
+  p8.p8spr(69, 3, 4, self.tail_spring:get_pos().x, self.tail_spring:get_pos().y)
   local body_pos = self.body_spring:get_pos()
   ovalfill(body_pos.x - 2, body_pos.y, body_pos.x + Horse.BODY_RECT.x, body_pos.y + Horse.BODY_RECT.y + 2, Horse.SHADOW_COLOR)
   ovalfill(body_pos.x, body_pos.y, body_pos.x + Horse.BODY_RECT.x, body_pos.y + Horse.BODY_RECT.y, Horse.COLOR)
-  p8spr(64, 5, 4, self.head_spring:get_pos().x, self.head_spring:get_pos().y)
-  self:drawBackLeg()
-  p8spr(0x1a, 3, 2, self.backhoof_spring:get_pos().x - 4, self.backhoof_spring:get_pos().y)
-  self:drawFrontLeg()
-  p8spr(0x30, 3, 2, self.fronthoof_spring:get_pos().x + 4, self.fronthoof_spring:get_pos().y)
+  p8.p8spr(64, 5, 4, self.head_spring:get_pos().x, self.head_spring:get_pos().y)
+
+  self:drawFrontLeg(v2.v2(0,0), 4)
+  p8.p8spr(32, 3, 2, self.fronthoof_spring:get_pos().x + 4, self.fronthoof_spring:get_pos().y)
+
+  self:drawBackLeg(v2.v2(0,0), 4)
+  p8.p8spr(18, 3, 2, self.backhoof_spring:get_pos().x - 4, self.backhoof_spring:get_pos().y)
 end
 
 function Horse:update()
@@ -246,9 +316,49 @@ end
 
 return Horse
 
+:: src/p8.lua
+local P8 = {}
+
+function P8.p8spr(s, w, h, dx, dy)
+  for xi=0,w-1 do
+    for yi=0,h-1 do
+      sspr(s + yi * 8 + xi, 0, 0, 16, 16, dx + xi * 16, dy + yi * 16)
+    end
+  end
+end
+
+return P8
+
 :: src/race.lua
 local Horse = include("horse.lua")
 local v2 = include("v2.lua")
+local p8 = include("p8.lua")
+
+-- cps = characters per second
+function make_opponent(y, cps, body, hair, shadow, saddle, trim)
+  return {
+    y = y,
+    cps = cps,
+    body = body,
+    hair = hair,
+    shadow = shadow,
+    saddle = saddle,
+    trim = trim,
+  }
+end
+
+-- x, y in map space, not screen space
+function draw_opponent(opp, x, y)
+  pal(6, opp.body)
+  pal(7, opp.hair)
+  pal(22, opp.shadow)
+  pal(16, opp.saddle)
+  pal(1, opp.trim)
+
+  p8.p8spr(104, 5, 3, x, y)
+
+  pal()
+end
 
 local Race = {
   TRACK_X_INTERPOLATE_FRAMES = 20,
@@ -259,6 +369,8 @@ local Race = {
 
   SCREEN_WIDTH = 480,
   CHAR_WIDTH_PX = 10,
+
+  FRAMES_PER_SECOND = 60,
 
   LINES = {
     {
@@ -297,6 +409,12 @@ function Race:new()
     track_x = 0,
     track_x_interpolate_from = 0,
     track_x_interpolate_t = 100,
+    opponents = {
+      make_opponent(97, 1.5, 16, 17,  1,  9, 25),
+      make_opponent(110, 2.5, 20, 31, 21, 23, 14),
+      make_opponent(127, 3,  6,  7, 22, 16, 1),
+    },
+    frame = 0,
   }
   setmetatable(o, self)
   self.__index = self
@@ -329,6 +447,8 @@ function Race:next_stage()
 end
 
 function Race:update()
+  self.frame += 1
+
   if peektext() then
     local char = readtext()
     if sub(self.top_text, self.top_cursor, true) == char and self.top_cursor - self.bottom_cursor < 6 then
@@ -389,6 +509,14 @@ function draw_line(text, cursor, x, y, typed_col, untyped_col)
   draw_cursor(cursor, x, y, typed_col)
 end
 
+function Race:draw_opponents()
+  for i=1,#self.opponents do
+    local opp = self.opponents[i]
+    local x = (Race.CHAR_WIDTH_PX * opp.cps ) * self.frame / Race.FRAMES_PER_SECOND
+    draw_opponent(opp, x + abs(5*sin(self.frame/30)), opp.y - abs(5*sin(self.frame/30)))
+  end
+end
+
 function Race:draw()
   cls()
   local left_x = self.track_x
@@ -397,6 +525,7 @@ function Race:draw()
   end
   camera(left_x,0)
   self:draw_course(left_x)
+  self:draw_opponents()
   self.hormse:draw()
   camera(0,0)
   draw_line(self.top_text, self.top_cursor, 10, 232, Race.TOP_COLOR, Race.UNTYPED_COLOR)
@@ -633,93 +762,93 @@ end
 return V2
 
 :: .info.pod
---[[pod,created="2026-05-26 21:14:32",modified="2026-09-01 13:10:48",runtime=27,workspaces={{location="gfx/0.gfx#1",workspace_index=2},{location="map/0.map",workspace_index=3}}]]
+--[[pod,created="2026-05-26 21:14:32",modified="2026-09-04 12:31:51",runtime=27,workspaces={{location="gfx/0.gfx#134",workspace_index=2},{location="map/0.map",workspace_index=3}}]]
 :: gfx/.info.pod
---[[pod,created="2026-05-26 21:14:32",modified="2026-09-01 13:10:48"]]
+--[[pod,created="2026-05-26 21:14:32",modified="2026-09-04 12:31:51"]]
 :: gfx/0.gfx
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI1LTAxLTE3IDEwOjM1OjQ4Iixtb2RpZmllZD0iMjAyNi0w
-OS0wMSAxMzoxMDo0OCIscmV2aXNpb249NDddXWx6NAB6DwAApksAAPEoe1swXT17Ym1wPXB4dQBD
+OS0wNCAxMjozMTo1MCIscmV2aXNpb249NTFdXWx6NACBDwAA9UsAAPEoe1swXT17Ym1wPXB4dQBD
 IBAQBPBWBxAHwBfQF8AHEAfwVixmbGFncz0wLHBhbl94PS0wLjM3NQ0A_gF5PS0xLjc1LHpvb209
 OH0sRwD1AvxA8xIPEwMOww4DDtMO8xYOCwAfFFMAJh-wOgAmcQcH7Ae8Z7wEAJjMR5wHHAccB4wG
 AF83HAf8NV8AJv8HKTe8N2ynTKcsxyzHTIdsh5w3vDf8JU8AJSfzMjkBTzYO80VJACWP9yDwAPcA
 8KBAACWP8KD3APAA9yBAACXfxyPXE_cDsPcAACegBwQAFw9vACVPJwAHoAQAF5-3ALAD5xPXI8dv
 ACW1I8cT1wP3A7AnAOdVAA8EAA8PbgAlBB0BDwQAEL-nACew9wMD1xPHI0sBUw-mAGIPOwI6b-8P
-0P8fED4AJw_aBCfgbSfMJ4xnjGdcl1yXPLcCAA9LACYwYEesAgBiZ4xnjLc8AgAPTAAlH-TRACYf
-8DoAYfALIySwRHAEEBQfFRRgBBAUHhQQORQQFC4UWQQGAGdpEBQuBHkFAJ9UeRBkmVSZZFlxACZw
-AhTANKBUkHEA-x6QFB4UkBQuBCAJUBQuBBApQBQuBAA5QAkELllAmVCJYHkEYFlEQDl0MDmEABdx
-ACY-4BfQPAAl0BzXHPcyHx0XHhceVx4GACEXPAYAEx4HAC-8YFoAJda3PHcfHTccdx43HBceYAA5
-Nx4XAgADEAADJAA-F-xicAAl-xTwTC8SYI5ArjDOEL4XAK43EI5HEH4fHScOIG4dBy4gziC_B1sA
-Jv8HgAfgF9AH4A8SEBegDkeQZ4AnPiAXMMwCX5ApdHmUWaQ51BkCAP8UlDcJlAcVFwmEBzUHCYRV
-lFWUBzUHpAcVFyQfFWQ3JB7UHqRoACXyCnlEJ4kkJwV5NBcVWVQXFbQnBcQn1CfkF9QCAD8H9C9a
-ACX-FxUHwCUHsDWwNbAlB7AVBwSwFySgRKBUkGSAdHCEYJRQpEC0MMQgBAIn-xAoYIhAqDDIELgX
-AKg3EIhHEHgfGCcIIGgeByggyCC4AwIuUQgQF6AIAgIfOAICKPAEIL8SByA_Hx1OHSAuPT4dIB5d
-TgQA-xEQPj1eEE4dbhDeABfOABfOHx8XvhzXEBy_EBy3MLwwvG8AJf8WF18SRyAXTkc_B05Hnjeu
-Hx0Xvh0H-ggH7gfeF94X3vcC-gD3AOMGKIHwEC8SwB4XsBsD-w6HYJdQl1BnLlBHHidQJx5HUC4n
-Px9QVz1QXZBdkGIAJZEkHxXUHtQ_1B4CAP8MPmQJVB5kCVQ_RBlkHkQpVD4kKXQe1E7ELsQgPAIn
-IPQlZAAztB7UAgDv9AAe1B6EjmSOZKBEoERWACX-C8Qg1BDUEOQAdA8V1C7UDvRGAOQA1BDEIKRA
-UgAl8AMguAcgOB8YSB4gKD44HiAYXkgEAP8REDg_WBBIHmgQ2AAXyAAXyB8fF7gd1xAduBAdtzC9
-ML1uACX-EhdYRyAXSEc4B0hHmDeoHxgXuB4H_AgH6AfYF9gX2PcC_DoCLWcowBgXsAg5ArEoUEcY
-J1AnGEdQKDkCbz5QXpBekBIEJ-8QLWCNQK0wzRC9FwCtNxCNRxB9HxInDSBtHgctIM0gvRIELlAN
-EBegDcAALyc9FAZi8RPwN48WQE4ATjA_EF4gThBeID4gXgBOIG6ALiWALgAVkB4gBABvoB4QBaAe
-HgMm-ylwDxYF0E6QDgVOcA4FbgAOMA4FfgCuQK5AnlCeUI6QBW6AFTAOkAUwDkAFIBUALlAFACUQ
-HoAVsM4HKB4YzgcfFM4HOh8Yzgds8AMgvQcgPR8STR4gLT49HiAdXk0EAPAFED0_XRBNHm0Q3QAX
-zQAXzR8fF70FBh_9BQYt-xFdRyAXTUc9B01HnTetHxIXvR4H-QgH7QfdF90X3fcC-coDLWctwB0X
-sA3KA78tUEcdJ1AnHUdQLcoDMVBB-xYHIOkC-wpekF6AbnB_YB4gFXAeECVQPhAVcB4wFdAVVAUm
-L-AI3wIJ-wGekH5wJTAucBVAHnA1EB6QaAAnMCC-GPgHHxT4B1YZGPgHHxT4Bz8fGPgHSy-w8DoA
-mSkwNwIAOHcwNwIAP3A3MB4ACB8w6QCZX-DdKaBJkQ--RA_VASj4ARtJYIlAqTC5IMkQ2RDZAOkC
-AA9VACb-AhAZ0FmQaYCZUKlAuTDJIPlbZQUnb78J0BmwOTkCJ8WQWZBZgGmAaXB5UJnmAH-5LgTp
-BOkEUg83IB8WUw8_BR4FVQ9vJwYkHdQdVg82kwYXBcQGF9QGF1kPTwcG1AZaDydvHxYHwB4FXA8P
-D5kCXy8A6QIAAi-5P1EAJSCZUKsDAgIALnlwAgAPYQInAF0CInB5WwAgUAQDAFBAFIkwJAMAcCA0
-iSA0eQQEAD8QVGlxAiYR6QIAMokESQQAoRQ5BHkkSQRpNDkEAKFZVCkEWWQZFEmkAgA-tDmEMg9K
-L7Q_Mg-RIuAJAgBg0BnAKcApggT-BKBJMCkgWSBJAGkgySC5QIlwSVBdACVR_bEQySACAA9CACUA
-sgIkaYACADBZkEmgAL_gObApwBnQGdAJ4FgAJQCmAjYQZFkEALB0WQCEWQCUSQCkOQMAdMQZANQJ
-AOQCAA9nACURJKgCocQ5xCnUGfQHCeQCAC-0T08AJfAJtDCkQJRQlFCEYHRwZIBkgFSQRKBEoDSw
-AgBPJMAkwFgHYA86ACegAymwOYAJEElQKSECfzC5UJlgifBSFyb-BRDZANkA2RDJILkwqUCZUHlw
-OfBs1QBfJADkAgD-ByDEIMQwtDC0QKRQlGCEcHSQVNAU8ABYACUh9F-pAwDrAwAEAl90cDTwDEwA
-JZ8U0BTQBOAE8L-0AScPOgD-D4JXd0C3MDcGBwIAFSAKAFQGMBcGBwIAEzAIACMGcAgAEZAGAE-A
-BwbwwBEn8AZgB_AGBwYghg8QBwYHph4GB6YuIJYDACMQpgMAD1sAJvAKLQfwABegB-AAN5AHEAYH
-Bh8QgCcGB15AAbYAO74BJgMAD2gAJfMJYCcQJyAXEAcgBxAGNxBHEAcQFiCXJgcARQFCNgAHIAoA
-YkZXBgd2BwwA9wlWDxYmBwYHhg4WB7Yexg4GHqYOBg4GDpYGADEGAHYIACEgZgcAD1QOJ-8eAAfg
-J8AmF6BGF4BmB3AmBw8WJhdQlicgthcQthcOAA6mNwYuZkcwXkegTvARtwKaDzoAJ-AHXwbQFrA2
-kFaQVoBGHxaANg6gNg6gJgYAD0IJJv8cELYfEBC2ERC2DxYGEMYOAMYexi7GLrY_pj4Ahj4gdj4w
-rpBOkE6gPrAugGMAJYi-EDaxNg8WBiYCUg4GDlYuCABCBg5GXggAMDYeUA4A3w6QDjawHhbQDgbg
-DvBzCSYSVnIAIUBGWwDAUFYOBg5gRg4GLlA2EQD-EG4ARg4GjtYeVnCGgHZwHmaAHlaQHkagHjaw
-HibADiaQEiepQD8WsE6gNh7QBgMAj8AGLsAGHvAEbwKaDzoAJoBgNg8WcB42DgQAj4AeFh6QPvCp
-TAAlcCAvFsAu0C4EADDQHtAKAF8_sD7wVdUAXzCgDxYbAiPADpoCH6DRECf-BAbgFtAmwA8WNrAO
-Jh6gXqBe8GfQACcPOgCa-wB3h1CXQKcwtyDHENcA9w9IACYvcPdjDyYYYIMAQucA5gcCAO-GEQfG
-ARfGARfWAQfWAV0AJebHINcQ5wD3MPYwMbYnAQMAD1AAJSDwMCoaPSfAJgIAD-cBmg86ACYx9l8B
-kAFTB_YB9g8LAD-WEfbjCybwDfZAQaZHAZZXAYYXAScBhhE3AYYBNwGWJzGGVwEDAD9h9glbACVF
-5gHWEaEADx0EJgAvAkARpjcBAwA-QfarRwAlJybAAgAaxwIAL-YOMAknEFBkGUOnQLcw6QJfAPYA
-EdZRApo-wPAgPADZ8ALGARe2ASe2ARcBxiHWAQfGIQsAMLYBJ_kEPxH2IFkAJ1IXAcYnAU0AZBcB
-thcBxgsAEScOAF8h9i3wIBkCmfAT8JIvETAfEA8ZCSAfER8QHxEAPxAPGTkPEQ8QHxEPEA8RTw8A
-QQA-EV8IADEfERAJABFABgAPdQAm9S4YDxAQDnAPEQAdDh0OUA0QDh0eHVAtAA1OQB0AHW5QDg1e
-AR4NAD2uDQAdbgFOHX4AAT4JfiAxCX5gCW4BBAAP9AAo8RIfMB8UDw4PFyAfHx8UHx8APxQPDj8X
-Dx8PFB8fDxQPH08QAEIAPx9fCQAyHx8QCgASQAcAD-oAKBAU_gAfH-oAByUPFfsAEAz7ANUMPg8X
-fiA8C35gC24MBAAP-AAn-xYnMBYBDxAgFxYXADYBPgcGFwYHRgE_ADdWAT4AFxBWAT5AVgE_4AAn
-8Q0GEAZwBwAXBhcGUAcQBhcWF1AnAAdGQBcAF2ZQSw-1DBYHADemBwAXZg5GF3YADjYPEHYgPg12
-YA1mDgQAD38AJfAdMAnwFAnQCQAJ0AlABBAJsATgDxXwAzlACTBZgCkfGSlwGQ4ZDikAVBkOSXQJ
-AO_EGQ4ZEIQAGQ4JEGQPFacMJv87cAnQCVAJQBcpYA8VBA4UBwUZF0B0FwUHMEQOFBcVMCQeNBdA
-LpQwDpQeMA40DjQPGVA_RA0JAAlQVA0ZALQNCRC0HQANtC0AtA08BCbwDEBvED8ZUJ8QQF5BQD4h
-gC4hgC4AEZAuABGgHgQAUBARoA4QCAC-AaAOEQARoBEAIfCHMCbzFA8ZrxAwvjABbgEAHkABXgEA
-HlBREB5wIRABDoAhEBGAIdARAgA-IfAo0QAn8AsUPw5QnxRAXk8VQD4tgC4tgC4AHZAuAB2gHgQA
-UBAdoA4QCACvDaAOHQAdoB0ALdIAJ-MUDq8UML0wDxVtDAAdQAxdDAAdUFwQHXAsEAwNgCwQHIAs
-0BwCAB8s0gAo8AlmMVCWQFZPFkA2LoAmLoAmAB6QJgAeoBYEAFAQHqAGEAgArw6gBh4AHqAeAC7P
-ACfwEAGmMLYwDxZmDgAWQA5WDgAWUF4QFnAuEA4GgC4QHoBSDgICAB8uzgAnQgAZDxk2A6AAORBk
-DgQQKSBUBgDyLBBUDhQAKRBkDhQZIGQ_MDR_MCQOID5AJA4gLmAUDiA_UBQOByAeByAJIAQfEgcg
-Hw0HYC8SFwAvDXAfBwA-JxAnzBYn9SC0MCQPFaQAJA6kADQONA4gFAAkXjAYAC4wHjAIB3AeIAcY
-QAkQHiAHCAcwCQAJABEA8wEXgA8YByAHkB0HUBdALRcwBQAfR7sQKQ86AP------------------
--------bUG09OH19
+0P8fED4AJw_aBCfgbSfMJ4xnjGdcl1yXPLcCAA9LACYwYEesAgBiZ4xnjLc8AgAPTAAl-xTwTC8S
+YI5ArjDOEL4XAK43EI5HEH4fHScOIG4dBy4gziC_B1sAJv8HgAfgF9AH4A8SEBegDkeQZ4AnPiAX
+ME8AJg97ASbwDPAjJLBEcAQQFB8VFGAEEBQeFBA5FBAULhRZBAYAZ2kQFC4EeQUAn1R5EGSZVJlk
+WXEAJnACFMA0oFSQcQD-HpAUHhSQFC4EIAlQFC4EEClAFC4EADlACQQuWUCZUIlgeQRgWURAOXQw
+OYQAF3EAJj-gF9A8ACXQHNcc9zIfHRceFx5XHgYAIRc8BgATHgcAL-xgWgAl1rc8dx8dNxx3Hjcc
+Fx5gADk3HhcCAAMQAAMkAD8X-GJwACXwBCC-EgcgPh8dTh0gLj0_HSAeXU4EAP8RED49XhBOHW4Q
+3gAXzgAXzh8fF74c1xAcvhActzC8MLxvACX-FhdfEkcgF05HPgdOR543rh8dF74dB-4IB_4H3hfe
+F973Av4A9wBtBCiB8BAvEsAeF7A7A-8Oh2CXUJdQZy5QRx4nUCceR1AuJz8fUFc9UF2QXZBiACWQ
+KXR5lFmkOdQZAgD-FJQ3CZQHFRcJhAc1BwmEVZRVlAc1B6QHFRckHxVkNyQe1B6kaAAl8gp5RCeJ
+JCcFeTQXFVlUFxW0JwXEJ9Qn5BfUAgA-B-QvWgAl-xcVB8AlB7A1sDWwJQewFQcEsBckoESgVJBk
+gHRwhGCUUKRAtDDEIB0FJ-8QKGCIQKgwyBC4FwCoNxCIRxB4HxgnCCBoHgcoIMgguBwFLlEIEBeg
+CBsFHzgbBSoPOgCZkSQfFdQe1D7UHgIA-ww_ZAlUHmQJVD5EGWQeRClUPiQpdB7UTsQuxCC5AScg
+9CVkADO0HtQCAO-0AB7UHoSOZI5koESgRFYAJf8LxCDUENQQ5AB0DxXULtQO9EYA5ADUEMQgpEBS
+ACXwAyC4ByA4HxhIHiAoPjgeIBheSAQA-xEQOD5YEEgeaBDYABfIABfIHx8XuB3XEB24EB23ML0w
+vW4AJf8SF1hHIBdIRzgHSEeYN6gfGBe4Hgf4CAfoB9gX2BfY9wL4sAQtZyjAGBewCK8EsShQRxgn
+UCcYR1AorwRvPlBekF6QjwMn-xAtYI1ArTDNEL0XAK03EI1HEH0fEicNIG0eBy0gzSC9jwMuUQ0Q
+F6ANjwMfPY8DY-ESN48WQE4ATjA_EF4gThBeID4gXgBOIG6ALiWALgAVkB4gBABvoB4QBaAeHgMm
+-ylwDxYF0E6QDgVOcA4FbgAOMA4FfgCuQK5AnlCeUI6QBW6AFTAOkAUwDkAFIBUALlAFACUQHoAV
+sGQKKB4YZAofFGQKOh8YZAps8AMgvQcgPR8STR4gLT49HiAdXk0EAPAFED0_XRBNHm0Q3QAXzQAX
+zR8fF717CB_9ewgt-xFdRyAXTUc9B01HnTetHxIXvR4H-QgH7QfdF90X3fcC-coDLWctwB0XsA3K
+A78tUEcdJ1AnHUdQLcoDMVBB-xYHIOkC-wpekF6AbnB_YB4gFXAeECVQPhAVcB4wFdAVVAUmL-AI
+3wIJ-wGekH5wJTAucBVAHnA1EB6QaAAnMCC-GG4KHxRuClYZGG4KHxRuCj8fGG4KSy-w8DoAmSkw
+NwIAOHcwNwIAP3A3MB4ACB8w6QCZX-DdKaBJWw--RA_VASj4ARtJYIlAqTC5IMkQ2RDZAOkCAA9V
+ACb-AhAZ0FmQaYCZUKlAuTDJIPlbZQUnb78J0BmwOTkCJ8WQWZBZgGmAaXB5UJnmAH-5LgTpBOkE
+zw43IB8W0A4_BR4F0g5vJwYkHdQd0w42kwYXBcQGF9QGF9YOTwcG1AbXDidvHxYHwB4F2Q4PD5kC
+Xy8A6QIAAi-5P1EAJSCZUKsDAgIALnlwAgAPYQInAF0CInB5WwAgUAQDAFBAFIkwJAMAcCA0iSA0
+eQQEAD8QVGlxAiYR6QIAMokESQQAoRQ5BHkkSQRpNDkEAKFZVCkEWWQZFEmkAgA-tDmEMg9KL7Q_
+Mg-RIuAJAgBg0BnAKcApggT-BKBJMCkgWSBJAGkgySC5QIlwSVBdACVR_bEQySACAA9CACUAsgIk
+aYACADBZkEmgAL_gObApwBnQGdAJ4FgAJQCmAjYQZFkEALB0WQCEWQCUSQCkOQMAdMQZANQJAOQC
+AA9nACURJKgCocQ5xCnUGfQHCeQCAC-0T08AJfAJtDCkQJRQlFCEYHRwZIBkgFSQRKBEoDSwAgBP
+JMAkwFgHYA86ACegAymwOYAJEElQKSECfzC5UJlgifAcFyb-BRDZANkA2RDJILkwqUCZUHlwOfBs
+1QBfJADkAgD-ByDEIMQwtDC0QKRQlGCEcHSQVNAU8ABYACUh9F-pAwDrAwAEAl90cDTwDEwAJZ8U
+0BTQBOAE8L-0AScPOgD-D4JXd0C3MDcGBwIAFSAKAFQGMBcGBwIAEzAIACMGcAgAEZAGAE-ABwbw
+wBEn8AZgB_AGBwYghg8QBwYHph4GB6YuIJYDACMQpgMAD1sAJvAKLQfwABegB-AAN5AHEAYHBh8Q
+gCcGB15AAbYAO74BJgMAD2gAJfMJYCcQJyAXEAcgBxAGNxBHEAcQFiCXJgcARQFCNgAHIAoAYkZX
+Bgd2BwwA9wlWDxYmBwYHhg4WB7Yexg4GHqYOBg4GDpYGADEGAHYIACEgZgcAD1QOJ-8eAAfgJ8Am
+F6BGF4BmB3AmBw8WJhdQlicgthcQthcOAA6mNwYuZkcwXkegTvARtwKaDzoAJ-AHXwbQFrA2kFaQ
+VoBGHxaANg6gNg6gJgYAD0IJJv8cELYfEBC2ERC2DxYGEMYOAMYexi7GLrY_pj4Ahj4gdj4wrpBO
+kE6gPrAugGMAJYi-EDaxNg8WBiYCUg4GDlYuCABCBg5GXggAMDYeUA4A3w6QDjawHhbQDgbgDvBz
+CSYSVnIAIUBGWwDAUFYOBg5gRg4GLlA2EQD-EG4ARg4GjtYeVnCGgHZwHmaAHlaQHkagHjawHibA
+DiaQEiepQD8WsE6gNh7QBgMAj8AGLsAGHvAEbwKaDzoAJoBgNg8WcB42DgQAj4AeFh6QPvCpTAAl
+cCAvFsAu0C4EADDQHtAKAF8_sD7wVdUAXzCgDxYbAiPADpoCH6DRECf-BAbgFtAmwA8WNrAOJh6g
+XqBe8GfQACcPOgCa-wB3h1CXQKcwtyDHENcA9w9IACYvcPdjDyYYYIMAQucA5gcCAO-GEQfGARfG
+ARfWAQfWAV0AJebHINcQ5wD3MPYwMbYnAQMAD1AAJSDwMCoaPSfAJgIAD70BJw_MALEx9l8BqAFT
+B_YB9g8LAD-WEfb7CybwDfZAQaZHAZZXAYYXAScBhhE3AYYBNwGWJzGGVwEDAD9h9glbACVF5gHW
+EaEADzUEJgBHAkARpjcBAwA-QfarRwAlJybAAgAaxwIAL-YOSAknEFB8GUOnQLcwAQNfAPYAEdal
+ADIPbwJzP8DwIDwA2fACxgEXtgEntgEXAcYh1gEHxiELADC2AScfBT8R9iBZACdSFwHGJwFNAGQX
+AbYXAcYLABEnDgBfIfYt8CA3Aj4v8C0yAl-wE-CSLxEwHxAPGQkgHxEfEB8RAD8QDxk5DxEPEB8R
+DxAPEU8PAEEAPxFfCAAxHxEQCQARQAYAD3UAJvUuGA8QEA5wDxEAHQ4dDlANEA4dHh1QLQANTkAd
+AB1uUA4NXgEeDQA9rg0AHW4BTh1_AAE_CX4gMQl_YAluAQQAD-QAKPESHzAfFA8ODxcgHx8fFB8f
+AD8UDw4-Fw8fDxQfHw8UDx9PEABCAD8fXwkAMh8fEAoAEkAHAA-6ACgQFPoAHx-6AAclDxX7ABAM
+_wDVDD4PF34gPAt_YAtuDAQAD-wAJ-8WJzAWAQ8QIBcWFwA2AT4HBhcGB0YBPgA3VgE_ABcQVgE_
+QFYBPuAAJ-ENBhAGcAcAFwYXBlAHEAYXFhdQJwAHRkAXABdmUJoP9QwWBwA3pgcAF2YORhd2AA42
+DxB2ID4NdmANZg4EAA9-ACXwHTAJ8BQJ0AkACdAJQAQQCbAE4A8V8AM5QAkwWYApHxkpcBkOGQ4p
+AFQZDkl0CQDvhBkOGRCEABkOCRBkDxX2DCb-O3AJ0AlQCUAXKWAPFQQOFAcFGRdAdBcFBzBEDhQX
+FTAkHjQXQC6UMA6UHjAONA40DxlQPkQNCQAJUFQNGQC0DQkQtB0ADbQtALQNVQQm8AxAbxA-GVCf
+EEBeQUA_IYAuIYAuABGQLgARoB4EAFAQEaAOEAgAvwGgDhEAEaARACHw1jAm8xQPGa8QML4wAW4B
+AB5AAV4BAB5QURAecCEQAQ6AIRARgCHQEQIAPyHwKNEAJ-ALFD8OUJ8UQF5PFUA_LYAuLYAuAB2Q
+LgAdoB4EAFAQHaAOEAgArw2gDh0AHaAdAC3SACfzFA6vFDC9MA8VbQwAHUAMXQwAHVBcEB1wLBAM
+DYAsEByALNAcAgAfLNIAKPAJZjFQlkBWTxZANi6AJi6AJgAekCYAHqAWBABQEB6gBhAIAK8OoAYe
+AB6gHgAuzwAn8BABpjC2MA8WZg4AFkAOVg4AFlBeEBZwLhAOBoAuEB6AoQ4CAgAfLs4AJ0IAGQ8Z
+NgOgADkQZA4EECkgVAYA8iwQVA4UACkQZA4UGSBkPjA0fjAkDiA_QCQOIC5gFA4gPlAUDgcgHgcg
+CSAEHxIHIB8NB2AvEhcALw1wHwcAPycQJxsXJ-UgtDAkDxWkACQOpAA0DjQOIBQAJF4wGAAuMB4w
+CAdwHiAHGEAJEB4gBwgHMAkACQARAPMBF4APGAcgB5AdB1AXQC0XMAUAH0cKESkPOgD---------
+----------------21BtPTh9fQ==
 :: map/.info.pod
---[[pod,created="2026-05-26 21:14:32",modified="2026-09-01 13:10:48"]]
+--[[pod,created="2026-05-26 21:14:32",modified="2026-09-04 12:31:51"]]
 :: map/0.map
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI1LTAxLTE3IDEwOjM1OjQ4Iixtb2RpZmllZD0iMjAyNi0w
-OC0xNiAwNjoyOToxNyIscmV2aXNpb249MzNdXWx6NADeAAAAZwEAAPEQe3tibXA9cHh1AEyAICAA
+OS0wNCAxMTo1Nzo0NCIscmV2aXNpb249MzddXWx6NADZAAAAaAEAAPEQe3tibXA9cHh1AEyAICAA
 AgIAABgAABkAHAIAAAMADwYA5AECAAAQAAARAAAEAA0CBgABJwAUAxsABQkAEQkzABgMIQABCQAR
-ABgAEQY-ABQALQARCA8AFBMkABENJAC0HwEAHwUAHQ4AAT4GAB0PDAAPBgAEFEFaABEAWgAYG88A
-AmkAB34ARAADABwhABEgGwD1Df8CAAQsaGlkZGVuPWZhbHNlLHBhbl94PTEuODMBAAEUAHR5PTQ3
-LjE2AQCyNyx0aWxlX2g9MTYKABB3CgCgem9vbT0wLjV9fQ==
+ABgAEQY-ABQALQARCA8AFBMkABENJAC6HwEAHwUAHQ4AAT4GAB0PDAANBgAUQVoAEQBaABgbzwAC
+aQAHfgBEAAMAHCEAESAbAPUN-wIABCxoaWRkZW49ZmFsc2UscGFuX3g9MS44MwEAARQAWXk9LTE2
+FgCSdGlsZV9oPTE2CgAQdwoAoHpvb209MC41fX0=
 :: sfx/.info.pod
---[[pod,created="2026-05-26 21:14:32",modified="2026-09-01 13:10:48"]]
+--[[pod,created="2026-05-26 21:14:32",modified="2026-09-04 12:31:51"]]
 :: sfx/0.sfx
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI1LTA3LTMxIDA4OjMwOjI4Iixtb2RpZmllZD0iMjAyNS0w
 Ny0zMSAwODozMDoyOCIscmV2aXNpb249MF1dbHo0AKAAAAALCgAA-zBweHUAAygAAAQABA9AEAIO
@@ -727,7 +856,7 @@ AAGgASACoA4ADxAADfDKAQIDQA8PkAQFBgdADJAICQoLQAyQDwwPDQ8ODEAM8P8BAOv-J6oBEAYP
 MBABIAEgAfAAAhACDhABIA8hIAEwD0Dwww8oD--wxg-4Cg--D4AP9w8NAfAJARAGDjAA------_9
 H-8BAKzPyA9AAA8QQP--sPD-AQD-6lD-----KQ==
 :: src/.info.pod
---[[pod,created="2026-09-03 14:14:22",modified="2026-09-03 14:14:22"]]
+--[[pod,created="2026-09-04 12:28:58",modified="2026-09-04 12:31:51"]]
 :: src/mfh.sfx
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI2LTA4LTE2IDAxOjU2OjI0Iixtb2RpZmllZD0iMjAyNi0w
 OC0xNiAwOTo0MDoyNyIscmV2aXNpb249NzBdXWx6NAC-BQAAPRAAAPEfcHh1AAMoAAAEAAQPQBAC

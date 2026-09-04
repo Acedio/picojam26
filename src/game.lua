@@ -1,5 +1,6 @@
 local Race = include("race.lua")
 local Title = include("title.lua")
+local End = include("end.lua")
 
 local States = {
   TITLE = 1,
@@ -19,7 +20,10 @@ function _update()
   if state == States.TITLE and ret then
     state = States.RACE
     current = Race:new()
-  elseif state == States.RACE and ret then
+  elseif state == States.RACE and ret ~= nil then
+    state = States.END
+    current = End:new(ret.hormse_seconds, ret.opp_seconds)
+  elseif state == States.END and ret then
     state = States.TITLE
     current = Title:new()
   end

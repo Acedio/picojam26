@@ -79,8 +79,8 @@ function Race:new()
     track_x_interpolate_t = 100,
     opponents = {
       make_opponent(97, 1.5, 16, 17,  1,  9, 25),
-      make_opponent(112, 2.5, 20, 31, 21, 23, 14),
-      make_opponent(135, 3,  6,  7, 22, 16, 1),
+      make_opponent(110, 2.5, 20, 31, 21, 23, 14),
+      make_opponent(127, 3,  6,  7, 22, 16, 1),
     },
     frame = 0,
   }
@@ -91,6 +91,15 @@ function Race:new()
   o.hormse:set_front_hoof(o.top_cursor * Race.CHAR_WIDTH_PX)
   o:init()
   return o
+end
+
+function Race:total_chars()
+  local chars = 0
+  for i=1,#Race.LINES do
+    -- Top lines are always longer than bottom lines.
+    chars += #Race.LINES[i].top
+  end
+  return chars
 end
 
 function Race:init()
@@ -138,7 +147,17 @@ function Race:update()
   end
   self.track_x_interpolate_t += 1
   self.hormse:update()
-  return self:is_last_level() and self:stage_complete()
+  if self:is_last_level() and self:stage_complete() then
+    local total_chars = self:total_chars()
+    return {
+      hormse_seconds = self.frame / Race.FRAMES_PER_SECOND,
+      opp_seconds = {
+        total_chars / self.opponents[1].cps,
+        total_chars / self.opponents[2].cps,
+        total_chars / self.opponents[3].cps,
+      },
+    }
+  end
 end
 
 function draw_cursor(cidx, x, y, col)

@@ -95,17 +95,17 @@ function Horse:frontKneeTarget()
   return (self:frontLegJoint() + self:frontHoofJoint()) / 2 + v2.v2(4,0)
 end
 
-function Horse:drawFrontLeg()
-  local hip = self:frontLegJoint()
-  local knee = self.frontknee_spring:get_pos()
-  local hoof = self:frontHoofJoint()
+function Horse:drawFrontLeg(offset, color)
+  local hip = self:frontLegJoint() + offset
+  local knee = self.frontknee_spring:get_pos() + offset
+  local hoof = self:frontHoofJoint() + offset
   for i=0,Horse.LEG_WIDTH do
-    line(hip.x+i, hip.y, knee.x+i, knee.y, 4)
-    line(hip.x+i, hip.y-1, knee.x+i, knee.y-1, 4)
+    line(hip.x+i, hip.y, knee.x+i, knee.y, color)
+    line(hip.x+i, hip.y-1, knee.x+i, knee.y-1, color)
   end
   for i=0,Horse.LEG_WIDTH do
-    line(knee.x+i, knee.y, hoof.x+i, hoof.y, 4)
-    line(knee.x+i, knee.y-1, hoof.x+i, hoof.y-1, 4)
+    line(knee.x+i, knee.y, hoof.x+i, hoof.y, color)
+    line(knee.x+i, knee.y-1, hoof.x+i, hoof.y-1, color)
   end
 end
 
@@ -121,30 +121,38 @@ function Horse:backKneeTarget()
   return (self:backLegJoint() + self:backHoofJoint()) / 2 + v2.v2(-7,0)
 end
 
-function Horse:drawBackLeg()
-  local hip = self:backLegJoint()
-  local knee = self.backknee_spring:get_pos()
-  local hoof = self:backHoofJoint()
+function Horse:drawBackLeg(offset, color)
+  local hip = self:backLegJoint() + offset
+  local knee = self.backknee_spring:get_pos() + offset
+  local hoof = self:backHoofJoint() + offset
   for i=0,Horse.LEG_WIDTH do
-    line(hip.x+i, hip.y, knee.x+i, knee.y, 4)
-    line(hip.x+i, hip.y-1, knee.x+i, knee.y-1, 4)
+    line(hip.x+i, hip.y, knee.x+i, knee.y, color)
+    line(hip.x+i, hip.y-1, knee.x+i, knee.y-1, color)
   end
   for i=0,Horse.LEG_WIDTH do
-    line(knee.x+i, knee.y, hoof.x+i, hoof.y, 4)
-    line(knee.x+i, knee.y-1, hoof.x+i, hoof.y-1, 4)
+    line(knee.x+i, knee.y, hoof.x+i, hoof.y, color)
+    line(knee.x+i, knee.y-1, hoof.x+i, hoof.y-1, color)
   end
 end
 
 function Horse:draw()
+  -- Background feet
+  self:drawBackLeg(v2.v2(4,-4), 20)
+  p8.p8spr(43, 3, 2, self.backhoof_spring:get_pos().x, self.backhoof_spring:get_pos().y - 4)
+  self:drawFrontLeg(v2.v2(-4,-4), 20)
+  p8.p8spr(48, 3, 2, self.fronthoof_spring:get_pos().x, self.fronthoof_spring:get_pos().y - 4)
+
   p8.p8spr(69, 3, 4, self.tail_spring:get_pos().x, self.tail_spring:get_pos().y)
   local body_pos = self.body_spring:get_pos()
   ovalfill(body_pos.x - 2, body_pos.y, body_pos.x + Horse.BODY_RECT.x, body_pos.y + Horse.BODY_RECT.y + 2, Horse.SHADOW_COLOR)
   ovalfill(body_pos.x, body_pos.y, body_pos.x + Horse.BODY_RECT.x, body_pos.y + Horse.BODY_RECT.y, Horse.COLOR)
   p8.p8spr(64, 5, 4, self.head_spring:get_pos().x, self.head_spring:get_pos().y)
-  self:drawBackLeg()
-  p8.p8spr(0x1a, 3, 2, self.backhoof_spring:get_pos().x - 4, self.backhoof_spring:get_pos().y)
-  self:drawFrontLeg()
-  p8.p8spr(0x30, 3, 2, self.fronthoof_spring:get_pos().x + 4, self.fronthoof_spring:get_pos().y)
+
+  self:drawFrontLeg(v2.v2(0,0), 4)
+  p8.p8spr(32, 3, 2, self.fronthoof_spring:get_pos().x + 4, self.fronthoof_spring:get_pos().y)
+
+  self:drawBackLeg(v2.v2(0,0), 4)
+  p8.p8spr(18, 3, 2, self.backhoof_spring:get_pos().x - 4, self.backhoof_spring:get_pos().y)
 end
 
 function Horse:update()
