@@ -10,6 +10,7 @@ local End = {
   SCREEN_WIDTH = 480,
   HORMSE_START_X = 480 + 70,
   HORMSE_MIN_X = -170,
+  MIN_FRAMES_BEFORE_SKIP = 60,
 }
 
 local function opp_horse(seconds, num)
@@ -50,9 +51,14 @@ function End:new(hormse_seconds, opp_seconds)
   self.__index = self
 
   o.time_str = bubbletext(string.format("wow! hormse ran %0.2fs fast!", hormse_seconds), "\^w\^t", 10)
+  o.any_key_str = bubbletext("press any key...", "", 5)
 
   o:init()
   return o
+end
+
+function End:can_skip()
+  return self.frame >= End.MIN_FRAMES_BEFORE_SKIP 
 end
 
 function End:init()
@@ -79,9 +85,12 @@ function End:update()
   self.hormse:update()
   self.hormse_boast:update()
 
-  if peektext() then
-    readtext()
-    return true
+  if self:can_skip() then
+    self.any_key_str:update()
+    if peektext() then
+      readtext()
+      return true
+    end
   end
   return false
 end
@@ -95,8 +104,8 @@ function End:draw()
   p8.p8spr(128, 6, 3, podium_x, podium_y)
   local podium_positions = {
     v2.v2(podium_x + 2 * 16, podium_y - 25),
-    v2.v2(podium_x         , podium_y - 15),
-    v2.v2(podium_x + 4 * 16, podium_y - 4),
+    v2.v2(podium_x         , podium_y - 17),
+    v2.v2(podium_x + 4 * 16, podium_y - 2),
   }
   local hormse_won = self.podium_horses[1].is_hormse
   for i=1,3 do
@@ -121,6 +130,10 @@ function End:draw()
   end
 
   self.time_str:draw(v2.v2(nil, 50))
+
+  if self:can_skip() then
+    self.any_key_str:draw(v2.v2(380, 250))
+  end
 end
 
 return End
