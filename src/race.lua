@@ -79,8 +79,8 @@ function Race:new()
     track_x_interpolate_t = 100,
     opponents = {
       make_opponent(97, 1.5, 16, 17,  1,  9, 25),
-      make_opponent(110, 2.5, 20, 31, 21, 23, 14),
-      make_opponent(127, 3,  6,  7, 22, 16, 1),
+      make_opponent(110, 2.2, 20, 31, 21, 23, 14),
+      make_opponent(127, 2.7,  6,  7, 22, 16, 1),
     },
     frame = 0,
   }
