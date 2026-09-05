@@ -148,9 +148,12 @@ function Race:update()
   self.track_x_interpolate_t += 1
   self.hormse:update()
   if self:is_last_level() and self:stage_complete() then
+    if not self.hormse_time then
+      self.hormse_time = self.frame / Race.FRAMES_PER_SECOND
+    end
     local total_chars = self:total_chars()
     return {
-      hormse_seconds = self.frame / Race.FRAMES_PER_SECOND,
+      hormse_seconds = self.hormse_time,
       opp_seconds = {
         total_chars / self.opponents[1].cps,
         total_chars / self.opponents[2].cps,
