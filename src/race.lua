@@ -40,6 +40,8 @@ local Race = {
 
   FRAMES_PER_SECOND = 60,
 
+  CANT_MOVE_ANIM_FRAMES = 10,
+
   LINES = {
     {
       top="move the front legs by typing on this line",
@@ -83,6 +85,7 @@ function Race:new()
       make_opponent(127, 2.7,  6,  7, 22, 16, 1),
     },
     frame = 0,
+    cant_move_anim_frames = Race.CANT_MOVE_ANIM_FRAMES,
   }
   setmetatable(o, self)
   self.__index = self
@@ -125,18 +128,31 @@ end
 
 function Race:update()
   self.frame += 1
+  self.cant_move_anim_frames += 1
 
   if peektext() then
     local char = readtext()
-    if sub(self.top_text, self.top_cursor, true) == char and self.top_cursor - self.bottom_cursor < 6 then
-      self.top_cursor = self.top_cursor + 1
-      self.hormse:set_front_hoof((self.chars_so_far + self.top_cursor) * Race.CHAR_WIDTH_PX)
-      self.hormse:bump_front_hoof(5)
+    if sub(self.top_text, self.top_cursor, true) == char then
+      if self.top_cursor - self.bottom_cursor < 6 then
+        self.top_cursor = self.top_cursor + 1
+        -- Clear the cant move animation, if active.
+        cant_move_anim_frames = Race.CANT_MOVE_ANIM_FRAMES
+        self.hormse:set_front_hoof((self.chars_so_far + self.top_cursor) * Race.CHAR_WIDTH_PX)
+        self.hormse:bump_front_hoof(5)
+      else
+        self.cant_move_anim_frames = 0
+      end
     end
-    if sub(self.bottom_text, self.bottom_cursor, true) == char and self.bottom_cursor < self.top_cursor then
-      self.bottom_cursor = self.bottom_cursor + 1
-      self.hormse:set_back_hoof((self.chars_so_far + self.bottom_cursor) * Race.CHAR_WIDTH_PX)
-      self.hormse:bump_back_hoof(5)
+    if sub(self.bottom_text, self.bottom_cursor, true) == char then
+      if self.bottom_cursor < self.top_cursor then
+        -- Clear the cant move animation, if active.
+        cant_move_anim_frames = Race.CANT_MOVE_ANIM_FRAMES
+        self.bottom_cursor = self.bottom_cursor + 1
+        self.hormse:set_back_hoof((self.chars_so_far + self.bottom_cursor) * Race.CHAR_WIDTH_PX)
+        self.hormse:bump_back_hoof(5)
+      else
+        self.cant_move_anim_frames = 0
+      end
     end
   end
 
@@ -190,13 +206,13 @@ function serp(t)
   return (1 + sin(0.25 + 0.5*t))/2
 end
 
-function draw_line(text, cursor, x, y, typed_col, untyped_col)
+function Race:draw_line(text, cursor, x, y, typed_col, untyped_col)
   local typed_text = sub(text, 1, cursor - 1)
   local untyped_text = sub(text, cursor)
   local dx = print("\^w\^t" .. typed_text, x, y, typed_col)
   dx = print("\^w\^t" .. untyped_text, dx, y, untyped_col)
 
-  draw_cursor(cursor, x, y, typed_col)
+  draw_cursor(cursor, x + self:cant_move_offset(), y, typed_col)
 end
 
 function Race:draw_opponents()
@@ -205,6 +221,11 @@ function Race:draw_opponents()
     local x = (Race.CHAR_WIDTH_PX * opp.cps ) * self.frame / Race.FRAMES_PER_SECOND
     draw_opponent(opp, x + abs(5*sin(self.frame/30)), opp.y - abs(5*sin(self.frame/30)))
   end
+end
+
+-- Ranges betwen 0 and 0.5.
+function Race:cant_move_offset()
+  return max(0, Race.CANT_MOVE_ANIM_FRAMES / 2 - abs(Race.CANT_MOVE_ANIM_FRAMES / 2 - self.cant_move_anim_frames))
 end
 
 function Race:draw()
@@ -218,8 +239,8 @@ function Race:draw()
   self:draw_opponents()
   self.hormse:draw()
   camera(0,0)
-  draw_line(self.top_text, self.top_cursor, 10, 232, Race.TOP_COLOR, Race.UNTYPED_COLOR)
-  draw_line(self.bottom_text, self.bottom_cursor, 10, 252, Race.BOTTOM_COLOR, Race.UNTYPED_COLOR)
+  self:draw_line(self.top_text, self.top_cursor, 10, 232, Race.TOP_COLOR, Race.UNTYPED_COLOR)
+  self:draw_line(self.bottom_text, self.bottom_cursor, 10, 252, Race.BOTTOM_COLOR, Race.UNTYPED_COLOR)
 end
 
 return Race
