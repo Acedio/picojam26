@@ -177,6 +177,7 @@ function Race:race_update()
         self.hormse:bump_front_hoof(5)
       else
         self.top_text:trigger_cant_move_animation()
+        self.bottom_text:trigger_cant_move_animation()
       end
     end
     if self.bottom_text:next_char() == char then
@@ -185,6 +186,7 @@ function Race:race_update()
         self.hormse:set_back_hoof((self.chars_so_far + self.bottom_text.cursor) * Line.CHAR_WIDTH_PX)
         self.hormse:bump_back_hoof(5)
       else
+        self.top_text:trigger_cant_move_animation()
         self.bottom_text:trigger_cant_move_animation()
       end
     end
