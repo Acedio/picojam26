@@ -14,8 +14,11 @@ function Title:new()
   o.title = bubbletext("derpy derby", "\^w\^t", 10)
   o.anykey = bubbletext("press any key!", "", 8)
   o.credits = bubbletext("by illuminesce, zep, acedio 2026", "", 5)
-  o.hormse_x = Title.HORMSE_START_X
-  o.hormse = Horse:new{pos = v2.v2(o.hormse_x, 140)}
+  -- Start hormse off a little ahead so they're on screen when the title fades
+  -- in. We also adjust their initial pos back a bit so the hormse_x immediately
+  -- starts getting them shuffling.
+  o.hormse_x = Title.HORMSE_START_X + 70
+  o.hormse = Horse:new{pos = v2.v2(o.hormse_x-20, 140)}
   o:init()
   return o
 end
@@ -33,7 +36,7 @@ function Title:update()
   self.anykey:update()
   self.credits:update()
   self.hormse_x += 0.5
-  if self.hormse_x > 640 then
+  if self.hormse_x > 620 then
     self.hormse_x = Title.HORMSE_START_X
     self.hormse = Horse:new{pos = v2.v2(self.hormse_x, 140)}
   end

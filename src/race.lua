@@ -42,6 +42,19 @@ local Race = {
 
   CANT_MOVE_ANIM_FRAMES = 10,
 
+  COUNTDOWN = 1,
+  RACE = 2,
+
+  COUNTDOWN_STAGES = 4,
+  COUNTDOWN_STAGE_FRAMES = 60,
+
+  COUNTDOWN_STRINGS = {
+    "hormse.",
+    "hormse..",
+    "hormse...",
+    "HORMSE!!!",
+  },
+
   LINES = {
     {
       top="move the front legs by typing on this line",
@@ -85,7 +98,10 @@ function Race:new()
       make_opponent(127, 2.7,  6,  7, 22, 16, 1),
     },
     frame = 0,
+    countdown_stage = 1,
+    countdown_stage_frame = 0,
     cant_move_anim_frames = Race.CANT_MOVE_ANIM_FRAMES,
+    state = Race.COUNTDOWN,
   }
   setmetatable(o, self)
   self.__index = self
@@ -127,6 +143,34 @@ function Race:next_stage()
 end
 
 function Race:update()
+  -- Always update the countdown animation (it'll hide when it's done).
+  local countdown_complete = self:countdown_update() 
+  -- Also always animate hormse.
+  self.hormse:update()
+  if self.state == Race.COUNTDOWN then
+    if countdown_complete then
+      self.state = Race.RACE
+      -- clear the input buffer, no false starts allowed hormse!
+      readtext(true)
+    end
+    return nil
+  elseif self.state == Race.RACE then
+    return self:race_update()
+  else
+    assert(nil)
+  end
+end
+
+function Race:countdown_update()
+  self.countdown_stage_frame += 1
+  if self.countdown_stage < Race.COUNTDOWN_STAGES and self.countdown_stage_frame >= Race.COUNTDOWN_STAGE_FRAMES then
+    self.countdown_stage += 1
+    self.countdown_stage_frame = 0
+  end
+  return self.countdown_stage >= Race.COUNTDOWN_STAGES
+end
+
+function Race:race_update()
   self.frame += 1
   self.cant_move_anim_frames += 1
 
@@ -162,14 +206,13 @@ function Race:update()
     end
   end
   self.track_x_interpolate_t += 1
-  self.hormse:update()
   if self:is_last_level() and self:stage_complete() then
-    if not self.hormse_time then
-      self.hormse_time = self.frame / Race.FRAMES_PER_SECOND
+    if not self.hormse_finish_time then
+      self.hormse_finish_time = self.frame / Race.FRAMES_PER_SECOND
     end
     local total_chars = self:total_chars()
     return {
-      hormse_seconds = self.hormse_time,
+      hormse_seconds = self.hormse_finish_time,
       opp_seconds = {
         total_chars / self.opponents[1].cps,
         total_chars / self.opponents[2].cps,
@@ -177,6 +220,8 @@ function Race:update()
       },
     }
   end
+
+  return nil
 end
 
 function draw_cursor(cidx, x, y, col)
@@ -225,7 +270,24 @@ end
 
 -- Ranges betwen 0 and 0.5.
 function Race:cant_move_offset()
+  -- TODO: Make this bouncier.
   return max(0, Race.CANT_MOVE_ANIM_FRAMES / 2 - abs(Race.CANT_MOVE_ANIM_FRAMES / 2 - self.cant_move_anim_frames))
+end
+
+function Race:draw_countdown_symbol(x, y)
+  local str = Race.COUNTDOWN_STRINGS[self.countdown_stage]
+  local centered_x = x - #str * 4
+  printbg("\^w\^t" .. str, centered_x, y, 7, 0)
+end
+
+function Race:draw_countdown()
+  local i = self.countdown_stage_frame / Race.COUNTDOWN_STAGE_FRAMES
+  if i > 1 then
+    return
+  end
+  -- Lerps in from the right and then out the left.
+  local x = ( - (2 * i - 1)^5 + 0.5 ) * Race.SCREEN_WIDTH
+  self:draw_countdown_symbol(x,70)
 end
 
 function Race:draw()
@@ -241,6 +303,7 @@ function Race:draw()
   camera(0,0)
   self:draw_line(self.top_text, self.top_cursor, 10, 232, Race.TOP_COLOR, Race.UNTYPED_COLOR)
   self:draw_line(self.bottom_text, self.bottom_cursor, 10, 252, Race.BOTTOM_COLOR, Race.UNTYPED_COLOR)
+  self:draw_countdown()
 end
 
 return Race
