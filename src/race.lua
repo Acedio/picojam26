@@ -287,7 +287,7 @@ function Race:draw_countdown()
   end
   -- Lerps in from the right and then out the left.
   local x = ( - (2 * i - 1)^5 + 0.5 ) * Race.SCREEN_WIDTH
-  self:draw_countdown_symbol(x,70)
+  self:draw_countdown_symbol(x,50)
 end
 
 function Race:draw()
