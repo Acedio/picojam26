@@ -1,6 +1,7 @@
 local Horse = include("horse.lua")
 local v2 = include("v2.lua")
 local p8 = include("p8.lua")
+local Line = include("line.lua")
 
 -- cps = characters per second
 function make_opponent(y, cps, body, hair, shadow, saddle, trim)
@@ -36,11 +37,8 @@ local Race = {
   UNTYPED_COLOR = 3,
 
   SCREEN_WIDTH = 480,
-  CHAR_WIDTH_PX = 10,
 
   FRAMES_PER_SECOND = 60,
-
-  CANT_MOVE_ANIM_FRAMES = 8,
 
   COUNTDOWN = 1,
   RACE = 2,
@@ -83,10 +81,8 @@ function Race:new()
   local o = {
     hormse = Horse:new{pos = v2.v2(0, 140)},
     stage = 1,
-    bottom_text = Race.LINES[1].bot,
-    top_text = Race.LINES[1].top,
-    bottom_cursor = 1,
-    top_cursor = 1,
+    bottom_text = Line:new(Race.LINES[1].bot, Race.BOTTOM_COLOR, Race.UNTYPED_COLOR),
+    top_text = Line:new(Race.LINES[1].top, Race.TOP_COLOR, Race.UNTYPED_COLOR),
     -- Accumulate characters across Race.LINES.
     chars_so_far = 0,
     track_x = 0,
@@ -100,14 +96,13 @@ function Race:new()
     frame = 0,
     countdown_stage = 1,
     countdown_stage_frame = 0,
-    cant_move_anim_frame = Race.CANT_MOVE_ANIM_FRAMES,
     state = Race.COUNTDOWN,
   }
   setmetatable(o, self)
   self.__index = self
 
-  o.hormse:set_back_hoof(o.bottom_cursor * Race.CHAR_WIDTH_PX)
-  o.hormse:set_front_hoof(o.top_cursor * Race.CHAR_WIDTH_PX)
+  o.hormse:set_back_hoof(o.bottom_text.cursor * Line.CHAR_WIDTH_PX)
+  o.hormse:set_front_hoof(o.top_text.cursor * Line.CHAR_WIDTH_PX)
   o:init()
   return o
 end
@@ -127,19 +122,17 @@ function Race:init()
 end
 
 function Race:stage_complete()
-  return self.top_cursor > #Race.LINES[self.stage].top and self.bottom_cursor > #Race.LINES[self.stage].bot
+  return self.top_text:complete() and self.bottom_text:complete()
 end
 
 function Race:next_stage()
   self.chars_so_far += #Race.LINES[self.stage].top
   self.stage += 1
-  self.top_cursor = 1
-  self.bottom_cursor = 1
-  self.bottom_text = Race.LINES[self.stage].bot
-  self.top_text = Race.LINES[self.stage].top
+  self.bottom_text = Line:new(Race.LINES[self.stage].bot, Race.BOTTOM_COLOR, Race.UNTYPED_COLOR)
+  self.top_text = Line:new(Race.LINES[self.stage].top, Race.TOP_COLOR, Race.UNTYPED_COLOR)
   self.track_x_interpolate_from = self.track_x
   self.track_x_interpolate_t = 0
-  self.track_x = self.chars_so_far * Race.CHAR_WIDTH_PX
+  self.track_x = self.chars_so_far * Line.CHAR_WIDTH_PX
 end
 
 function Race:update()
@@ -147,6 +140,8 @@ function Race:update()
   local countdown_complete = self:countdown_update() 
   -- Also always animate hormse.
   self.hormse:update()
+  self.top_text:update()
+  self.bottom_text:update()
   if self.state == Race.COUNTDOWN then
     if countdown_complete then
       self.state = Race.RACE
@@ -172,30 +167,25 @@ end
 
 function Race:race_update()
   self.frame += 1
-  self.cant_move_anim_frame += 1
 
   if peektext() then
     local char = readtext()
-    if sub(self.top_text, self.top_cursor, true) == char then
-      if self.top_cursor - self.bottom_cursor < 6 then
-        self.top_cursor = self.top_cursor + 1
-        -- Clear the cant move animation, if active.
-        cant_move_anim_frame = Race.CANT_MOVE_ANIM_FRAMES
-        self.hormse:set_front_hoof((self.chars_so_far + self.top_cursor) * Race.CHAR_WIDTH_PX)
+    if self.top_text:next_char() == char then
+      if self.top_text.cursor - self.bottom_text.cursor < 6 then
+        self.top_text:move_next()
+        self.hormse:set_front_hoof((self.chars_so_far + self.top_text.cursor) * Line.CHAR_WIDTH_PX)
         self.hormse:bump_front_hoof(5)
       else
-        self.cant_move_anim_frame = 0
+        self.top_text:trigger_cant_move_animation()
       end
     end
-    if sub(self.bottom_text, self.bottom_cursor, true) == char then
-      if self.bottom_cursor < self.top_cursor then
-        -- Clear the cant move animation, if active.
-        cant_move_anim_frame = Race.CANT_MOVE_ANIM_FRAMES
-        self.bottom_cursor = self.bottom_cursor + 1
-        self.hormse:set_back_hoof((self.chars_so_far + self.bottom_cursor) * Race.CHAR_WIDTH_PX)
+    if self.bottom_text:next_char() == char then
+      if self.bottom_text.cursor < self.top_text.cursor then
+        self.bottom_text:move_next()
+        self.hormse:set_back_hoof((self.chars_so_far + self.bottom_text.cursor) * Line.CHAR_WIDTH_PX)
         self.hormse:bump_back_hoof(5)
       else
-        self.cant_move_anim_frame = 0
+        self.bottom_text:trigger_cant_move_animation()
       end
     end
   end
@@ -224,17 +214,12 @@ function Race:race_update()
   return nil
 end
 
-function draw_cursor(cidx, x, y, col)
-  local x = (cidx - 1) * Race.CHAR_WIDTH_PX - 1 + x
-  line(x, y, x, y + 16, col)
-end
-
 function Race:is_last_level()
   return self.stage == #Race.LINES
 end
 
 function Race:draw_finish_line()
-  local x = self.track_x + #Race.LINES[self.stage].top * Race.CHAR_WIDTH_PX
+  local x = self.track_x + #Race.LINES[self.stage].top * Line.CHAR_WIDTH_PX
   map(30,0,x,0)
 end
 
@@ -251,28 +236,12 @@ function serp(t)
   return (1 + sin(0.25 + 0.5*t))/2
 end
 
-function Race:draw_line(text, cursor, x, y, typed_col, untyped_col)
-  local typed_text = sub(text, 1, cursor - 1)
-  local untyped_text = sub(text, cursor)
-  local dx = print("\^w\^t" .. typed_text, x, y, typed_col)
-  dx = print("\^w\^t" .. untyped_text, dx, y, untyped_col)
-
-  draw_cursor(cursor, x + self:cant_move_offset(), y, typed_col)
-end
-
 function Race:draw_opponents()
   for i=1,#self.opponents do
     local opp = self.opponents[i]
-    local x = (Race.CHAR_WIDTH_PX * opp.cps ) * self.frame / Race.FRAMES_PER_SECOND
+    local x = (Line.CHAR_WIDTH_PX * opp.cps ) * self.frame / Race.FRAMES_PER_SECOND
     draw_opponent(opp, x + abs(5*sin(self.frame/30)), opp.y - abs(5*sin(self.frame/30)))
   end
-end
-
--- Ranges betwen 0 and 0.5.
-function Race:cant_move_offset()
-  local t = max(0, min(1, self.cant_move_anim_frame / Race.CANT_MOVE_ANIM_FRAMES))
-  local i = 1 - (2 * t - 1)^2
-  return 8 * i
 end
 
 function Race:draw_countdown_symbol(x, y)
@@ -302,8 +271,8 @@ function Race:draw()
   self:draw_opponents()
   self.hormse:draw()
   camera(0,0)
-  self:draw_line(self.top_text, self.top_cursor, 10, 232, Race.TOP_COLOR, Race.UNTYPED_COLOR)
-  self:draw_line(self.bottom_text, self.bottom_cursor, 10, 252, Race.BOTTOM_COLOR, Race.UNTYPED_COLOR)
+  self.top_text:draw(10, 232)
+  self.bottom_text:draw(10,252)
   self:draw_countdown()
 end
 
