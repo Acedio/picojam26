@@ -40,7 +40,7 @@ local Race = {
 
   FRAMES_PER_SECOND = 60,
 
-  CANT_MOVE_ANIM_FRAMES = 10,
+  CANT_MOVE_ANIM_FRAMES = 8,
 
   COUNTDOWN = 1,
   RACE = 2,
@@ -100,7 +100,7 @@ function Race:new()
     frame = 0,
     countdown_stage = 1,
     countdown_stage_frame = 0,
-    cant_move_anim_frames = Race.CANT_MOVE_ANIM_FRAMES,
+    cant_move_anim_frame = Race.CANT_MOVE_ANIM_FRAMES,
     state = Race.COUNTDOWN,
   }
   setmetatable(o, self)
@@ -172,7 +172,7 @@ end
 
 function Race:race_update()
   self.frame += 1
-  self.cant_move_anim_frames += 1
+  self.cant_move_anim_frame += 1
 
   if peektext() then
     local char = readtext()
@@ -180,22 +180,22 @@ function Race:race_update()
       if self.top_cursor - self.bottom_cursor < 6 then
         self.top_cursor = self.top_cursor + 1
         -- Clear the cant move animation, if active.
-        cant_move_anim_frames = Race.CANT_MOVE_ANIM_FRAMES
+        cant_move_anim_frame = Race.CANT_MOVE_ANIM_FRAMES
         self.hormse:set_front_hoof((self.chars_so_far + self.top_cursor) * Race.CHAR_WIDTH_PX)
         self.hormse:bump_front_hoof(5)
       else
-        self.cant_move_anim_frames = 0
+        self.cant_move_anim_frame = 0
       end
     end
     if sub(self.bottom_text, self.bottom_cursor, true) == char then
       if self.bottom_cursor < self.top_cursor then
         -- Clear the cant move animation, if active.
-        cant_move_anim_frames = Race.CANT_MOVE_ANIM_FRAMES
+        cant_move_anim_frame = Race.CANT_MOVE_ANIM_FRAMES
         self.bottom_cursor = self.bottom_cursor + 1
         self.hormse:set_back_hoof((self.chars_so_far + self.bottom_cursor) * Race.CHAR_WIDTH_PX)
         self.hormse:bump_back_hoof(5)
       else
-        self.cant_move_anim_frames = 0
+        self.cant_move_anim_frame = 0
       end
     end
   end
@@ -270,8 +270,9 @@ end
 
 -- Ranges betwen 0 and 0.5.
 function Race:cant_move_offset()
-  -- TODO: Make this bouncier.
-  return max(0, Race.CANT_MOVE_ANIM_FRAMES / 2 - abs(Race.CANT_MOVE_ANIM_FRAMES / 2 - self.cant_move_anim_frames))
+  local t = max(0, min(1, self.cant_move_anim_frame / Race.CANT_MOVE_ANIM_FRAMES))
+  local i = 1 - (2 * t - 1)^2
+  return 8 * i
 end
 
 function Race:draw_countdown_symbol(x, y)
