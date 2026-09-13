@@ -2,6 +2,7 @@ local v2 = include("v2.lua")
 local p8 = include("p8.lua")
 local Sort = include("sort.lua")
 local Horse = include("horse.lua")
+local Scores = include("scores.lua")
 
 include("texteffects.lua")
 
@@ -46,12 +47,21 @@ function End:new(hormse_seconds, opp_seconds)
   }
   o.hormse = Horse:new{pos = v2.v2(o.hormse_x, 140)}
   o.hormse_boast = bubbletext("for to winnnn!", "", 5)
+  o.hormse_seconds = hormse_seconds
 
   setmetatable(o, self)
   self.__index = self
 
-  o.time_str = bubbletext(string.format("wow! hormse ran %0.2fs fast!", hormse_seconds), "\^w\^t", 10)
+  o.time_str = bubbletext(string.format("wow! hormse ran %0.2fs fast!", o.hormse_seconds), "\^w\^t", 10)
   o.any_key_str = bubbletext("press any key...", "", 5)
+
+  if stat(64) then
+    -- Negate to ensure it's a "high" score table.
+    scoresub(Scores.SCORE_TABLE_NAME, -o.hormse_seconds)
+    o.score_str = bubbletext("submitted score!", "", 5)
+  else
+    o.score_str = bubbletext("log in to score!", "", 5)
+  end
 
   o:init()
   return o
@@ -92,6 +102,9 @@ function End:update()
       return true
     end
   end
+
+  self.score_str:update()
+
   return false
 end
 
@@ -134,6 +147,8 @@ function End:draw()
   if self:can_skip() then
     self.any_key_str:draw(v2.v2(380, 250))
   end
+
+  self.score_str:draw(v2.v2(10, 250))
 end
 
 return End

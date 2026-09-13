@@ -5,6 +5,9 @@ include("texteffects.lua")
 
 local Title = {
   HORMSE_START_X = -130,
+  KEEP_TITLING = 0,
+  VIEW_SCORES = 1,
+  START_RACE = 2,
 }
 
 function Title:new()
@@ -13,6 +16,7 @@ function Title:new()
   self.__index = self
   o.title = bubbletext("derpy derby", "\^w\^t", 10)
   o.anykey = bubbletext("press any key!", "", 8)
+  o.fast_hormses = bubbletext("(or H for fast hormses)", "", 6)
   o.credits = bubbletext("by illuminesce, zep, acedio 2026", "", 5)
   -- Start hormse off a little ahead so they're on screen when the title fades
   -- in. We also adjust their initial pos back a bit so the hormse_x immediately
@@ -34,6 +38,7 @@ end
 function Title:update()
   self.title:update()
   self.anykey:update()
+  self.fast_hormses:update()
   self.credits:update()
   self.hormse_x += 0.5
   if self.hormse_x > 620 then
@@ -50,10 +55,14 @@ function Title:update()
   end
   self.hormse:update()
   if peektext() then
-    readtext()
-    return true
+    local text = readtext()
+    if string.find(text, "h") then
+      return Title.VIEW_SCORES
+    else
+      return Title.START_RACE
+    end
   end
-  return false
+  return Title.KEEP_TITLING
 end
 
 function Title:draw()
@@ -61,7 +70,8 @@ function Title:draw()
   map(0,0)
   self.hormse:draw()
   self.title:draw(v2.v2(nil, 50))
-  self.anykey:draw(v2.v2(nil, 170))
+  self.anykey:draw(v2.v2(nil, 163))
+  self.fast_hormses:draw(v2.v2(nil, 178))
   self.credits:draw(v2.v2(314, 250))
 end
 

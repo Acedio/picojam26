@@ -1,16 +1,19 @@
-local Race = include("race.lua")
 local Title = include("title.lua")
+local Scores = include("scores.lua")
+local Race = include("race.lua")
 local End = include("end.lua")
 local Transition = include("transition.lua")
 
 local States = {
   TRANSITION_FROM_BLACK = 0,
   TITLE = 1,
-  TRANSITION_TO_RACE = 2,
-  RACE = 3,
-  TRANSITION_TO_END = 4,
-  END = 5,
-  TRANSITION_TO_TITLE = 6,
+  TRANSITION_TO_SCORES = 2,
+  SCORES = 3,
+  TRANSITION_TO_RACE = 5,
+  RACE = 6,
+  TRANSITION_TO_END = 7,
+  END = 8,
+  TRANSITION_TO_TITLE = 9,
 }
 local state = States.TRANSITION_FROM_BLACK
 
@@ -35,8 +38,19 @@ function _update()
     state = States.TITLE
     music()
     current = Title:new()
-  elseif state == States.TITLE and ret then
-    state = States.TRANSITION_TO_RACE
+  elseif state == States.TITLE then
+    if ret == Title.VIEW_SCORES then
+      state = States.TRANSITION_TO_SCORES
+      transition = Transition:new()
+    elseif ret == Title.START_RACE then
+      state = States.TRANSITION_TO_RACE
+      transition = Transition:new()
+    end
+  elseif state == States.TRANSITION_TO_SCORES and transition_covering then
+    state = States.SCORES
+    current = Scores:new()
+  elseif state == States.SCORES and ret then
+    state = States.TRANSITION_TO_TITLE
     transition = Transition:new()
   elseif state == States.TRANSITION_TO_RACE and transition_covering then
     state = States.RACE

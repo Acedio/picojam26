@@ -22,6 +22,7 @@ local v2 = include("v2.lua")
 local p8 = include("p8.lua")
 local Sort = include("sort.lua")
 local Horse = include("horse.lua")
+local Scores = include("scores.lua")
 
 include("texteffects.lua")
 
@@ -66,12 +67,21 @@ function End:new(hormse_seconds, opp_seconds)
   }
   o.hormse = Horse:new{pos = v2.v2(o.hormse_x, 140)}
   o.hormse_boast = bubbletext("for to winnnn!", "", 5)
+  o.hormse_seconds = hormse_seconds
 
   setmetatable(o, self)
   self.__index = self
 
-  o.time_str = bubbletext(string.format("wow! hormse ran %0.2fs fast!", hormse_seconds), "\^w\^t", 10)
+  o.time_str = bubbletext(string.format("wow! hormse ran %0.2fs fast!", o.hormse_seconds), "\^w\^t", 10)
   o.any_key_str = bubbletext("press any key...", "", 5)
+
+  if stat(64) then
+    -- Negate to ensure it's a "high" score table.
+    scoresub(Scores.SCORE_TABLE_NAME, -o.hormse_seconds)
+    o.score_str = bubbletext("submitted score!", "", 5)
+  else
+    o.score_str = bubbletext("log in to score!", "", 5)
+  end
 
   o:init()
   return o
@@ -112,6 +122,9 @@ function End:update()
       return true
     end
   end
+
+  self.score_str:update()
+
   return false
 end
 
@@ -154,24 +167,29 @@ function End:draw()
   if self:can_skip() then
     self.any_key_str:draw(v2.v2(380, 250))
   end
+
+  self.score_str:draw(v2.v2(10, 250))
 end
 
 return End
 
 :: src/game.lua
-local Race = include("race.lua")
 local Title = include("title.lua")
+local Scores = include("scores.lua")
+local Race = include("race.lua")
 local End = include("end.lua")
 local Transition = include("transition.lua")
 
 local States = {
   TRANSITION_FROM_BLACK = 0,
   TITLE = 1,
-  TRANSITION_TO_RACE = 2,
-  RACE = 3,
-  TRANSITION_TO_END = 4,
-  END = 5,
-  TRANSITION_TO_TITLE = 6,
+  TRANSITION_TO_SCORES = 2,
+  SCORES = 3,
+  TRANSITION_TO_RACE = 5,
+  RACE = 6,
+  TRANSITION_TO_END = 7,
+  END = 8,
+  TRANSITION_TO_TITLE = 9,
 }
 local state = States.TRANSITION_FROM_BLACK
 
@@ -196,8 +214,19 @@ function _update()
     state = States.TITLE
     music()
     current = Title:new()
-  elseif state == States.TITLE and ret then
-    state = States.TRANSITION_TO_RACE
+  elseif state == States.TITLE then
+    if ret == Title.VIEW_SCORES then
+      state = States.TRANSITION_TO_SCORES
+      transition = Transition:new()
+    elseif ret == Title.START_RACE then
+      state = States.TRANSITION_TO_RACE
+      transition = Transition:new()
+    end
+  elseif state == States.TRANSITION_TO_SCORES and transition_covering then
+    state = States.SCORES
+    current = Scores:new()
+  elseif state == States.SCORES and ret then
+    state = States.TRANSITION_TO_TITLE
     transition = Transition:new()
   elseif state == States.TRANSITION_TO_RACE and transition_covering then
     state = States.RACE
@@ -809,6 +838,148 @@ end
 
 return Race
 
+:: src/scores.lua
+local v2 = include("v2.lua")
+local Horse = include("horse.lua")
+
+include("texteffects.lua")
+
+local Scores = {
+  HORMSE_START_X = -130,
+  SCORE_TABLE_NAME = "highscores",
+}
+
+local function fake_scores()
+  local scores = {}
+  for i=1,64 do
+    table.insert(scores, {
+      score = -12.2,
+      username = "testingasdlkfa sdlf!",
+    })
+  end
+  scores[3].user_id = stat(64)
+  return scores
+end
+
+function Scores:new()
+  local o = {}
+  setmetatable(o, self)
+  self.__index = self
+  o.heading = bubbletext("fast hormses", "\^w\^t", 10)
+  o.any_key_str = bubbletext("press any key...", "", 5)
+  -- Start hormse off a little ahead so they're on screen when the title fades
+  -- in. We also adjust their initial pos back a bit so the hormse_x immediately
+  -- starts getting them shuffling.
+  o.hormse_x = Scores.HORMSE_START_X + 70
+  o.hormse = Horse:new{pos = v2.v2(o.hormse_x-20, 140)}
+  o.scores = nil
+  -- o.scores = fake_scores()
+  o.score_anim_frame = 0
+  o:init()
+  return o
+end
+
+function Scores:init()
+  -- Clear the input buffer in case any text was waiting.
+  readtext(true)
+end
+
+function Scores:update_hormse()
+  self.hormse_x += 0.5
+  if self.hormse_x > 620 then
+    self.hormse_x = Scores.HORMSE_START_X
+    self.hormse = Horse:new{pos = v2.v2(self.hormse_x, 140)}
+  end
+  if self.hormse_x + 50 > ((flr(self.hormse.fronthoof_pos.x / 11) + 1) * 11) then
+    self.hormse:set_front_hoof(self.hormse_x + 50)
+    self.hormse:bump_front_hoof(3)
+  end
+  if self.hormse_x > ((flr(self.hormse.backhoof_pos.x / 13) + 1) * 13) then
+    self.hormse:set_back_hoof(self.hormse_x)
+    self.hormse:bump_back_hoof(3)
+  end
+  self.hormse:update()
+end
+
+function Scores:update()
+  self.heading:update()
+  self.any_key_str:update()
+  self:update_hormse()
+
+  if self.scores then
+    self.score_anim_frame += 1
+  else
+    -- Waiting on scores.
+    local scores = scoresub(Scores.SCORE_TABLE_NAME)
+    if not scores.connecting then
+      self.scores = scores
+    end
+  end
+
+  if peektext() then
+    readtext()
+    return true
+  end
+
+  return false
+end
+
+function Scores:draw_score(score, index)
+  local is_meeee = stat(64) == score.user_id
+  local row = (index - 1) % 8
+  local y_base = 90 + row * 18
+  local x = -30 * index + self.score_anim_frame - 100
+  local x_waver = sin((index * 40 + self.score_anim_frame)/470) * 30
+  local gallop = abs(6*sin(x/40))
+
+  if x < -240 or x > 510 then
+    return x
+  end
+
+  local clipped_username = string.sub(score.username, 1, 16)
+  local color = 7
+  local border = 0
+  if is_meeee then
+    color = 10
+    border = 9
+  end
+  printbg("\^w\^t" .. clipped_username, x + 10 + x_waver + gallop / 2, y_base - gallop, color, border)
+  local str = string.format("#%d  %0.2fs", index, -score.score, clipped_username)
+  printbg(str, x, y_base - 4, 7, 3)
+  return x
+end
+
+function Scores:draw_scores()
+  if not self.scores then
+    print("connecting...", 100, 100)
+    return
+  end
+  if #self.scores < 1 then
+    print("no fast hormses!", 100, 100)
+    return
+  end
+
+  local x
+  for i=1,#self.scores do
+    x = self:draw_score(self.scores[i], i)
+  end
+  -- If the last score has gone off screen, restart.
+  if x > 510 then
+    self.score_anim_frame = 0
+  end
+end
+
+function Scores:draw()
+  cls()
+  map(0,0)
+  self.hormse:draw()
+  self.heading:draw(v2.v2(nil, 20))
+  self.any_key_str:draw(v2.v2(380, 250))
+  self:draw_scores()
+end
+
+return Scores
+
 :: src/sort.lua
 local Sort = {}
 
@@ -954,6 +1125,9 @@ include("texteffects.lua")
 
 local Title = {
   HORMSE_START_X = -130,
+  KEEP_TITLING = 0,
+  VIEW_SCORES = 1,
+  START_RACE = 2,
 }
 
 function Title:new()
@@ -962,6 +1136,7 @@ function Title:new()
   self.__index = self
   o.title = bubbletext("derpy derby", "\^w\^t", 10)
   o.anykey = bubbletext("press any key!", "", 8)
+  o.fast_hormses = bubbletext("(or H for fast hormses)", "", 6)
   o.credits = bubbletext("by illuminesce, zep, acedio 2026", "", 5)
   -- Start hormse off a little ahead so they're on screen when the title fades
   -- in. We also adjust their initial pos back a bit so the hormse_x immediately
@@ -983,6 +1158,7 @@ end
 function Title:update()
   self.title:update()
   self.anykey:update()
+  self.fast_hormses:update()
   self.credits:update()
   self.hormse_x += 0.5
   if self.hormse_x > 620 then
@@ -999,10 +1175,14 @@ function Title:update()
   end
   self.hormse:update()
   if peektext() then
-    readtext()
-    return true
+    local text = readtext()
+    if string.find(text, "h") then
+      return Title.VIEW_SCORES
+    else
+      return Title.START_RACE
+    end
   end
-  return false
+  return Title.KEEP_TITLING
 end
 
 function Title:draw()
@@ -1010,7 +1190,8 @@ function Title:draw()
   map(0,0)
   self.hormse:draw()
   self.title:draw(v2.v2(nil, 50))
-  self.anykey:draw(v2.v2(nil, 170))
+  self.anykey:draw(v2.v2(nil, 163))
+  self.fast_hormses:draw(v2.v2(nil, 178))
   self.credits:draw(v2.v2(314, 250))
 end
 
@@ -1445,7 +1626,7 @@ AAGgASACoA4ADxAADfDKAQIDQA8PkAQFBgdADJAICQoLQAyQDwwPDQ8ODEAM8P8BAOv-J6oBEAYP
 MBABIAEgAfAAAhACDhABIA8hIAEwD0Dwww8oD--wxg-4Cg--D4AP9w8NAfAJARAGDjAA------_9
 H-8BAKzPyA9AAA8QQP--sPD-AQD-6lD-----KQ==
 :: src/.info.pod
---[[pod,created="2026-09-06 11:25:24",modified="2026-09-06 11:30:36"]]
+--[[pod,created="2026-09-13 11:53:35",modified="2026-09-13 11:53:35"]]
 :: src/mfh.sfx
 b64$LS1bW3BvZCxjcmVhdGVkPSIyMDI2LTA4LTE2IDAxOjU2OjI0Iixtb2RpZmllZD0iMjAyNi0w
 OC0xNiAwOTo0MDoyNyIscmV2aXNpb249NzBdXWx6NAC-BQAAPRAAAPEfcHh1AAMoAAAEAAQPQBAC
